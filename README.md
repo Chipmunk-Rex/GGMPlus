@@ -157,11 +157,11 @@ GGMPlus/
 
 버그 제보, 기능 제안, Pull Request 모두 환영합니다!
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. 프로젝트 Fork하기
+2. 기능 브랜치 생성 (`git checkout -b feature/새로운기능`)
+3. 변경사항 커밋 (`git commit -m '새로운 기능 추가'`)
+4. 브랜치에 Push (`git push origin feature/새로운기능`)
+5. Pull Request 열기
 
 ## 📝 라이선스
 
