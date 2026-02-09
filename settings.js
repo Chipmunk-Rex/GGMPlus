@@ -11,50 +11,66 @@ function showToast(message) {
 // 설정 불러오기
 async function loadSettings() {
   try {
-    const response = await chrome.runtime.sendMessage({ type: "GET_SETTINGS" });
+    const response = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
     
-    document.getElementById("intervalInput").value = response.periodInMinutes || 60;
-    document.getElementById("delayInput").value = response.delayInMinutes || 1;
+    // 오늘 출석 상태
+    const todayStatus = document.getElementById("todayStatus");
+    if (response.todayChecked) {
+      todayStatus.textContent = "✅ 완료";
+      todayStatus.className = "status-value success";
+    } else {
+      todayStatus.textContent = "⏳ 미완료";
+      todayStatus.className = "status-value pending";
+    }
+    
+    // 다음 실행 시간 (자정)
+    const nextCheckTime = document.getElementById("nextCheckTime");
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    const hoursLeft = Math.floor((midnight - now) / 3600000);
+    const minutesLeft = Math.floor(((midnight - now) % 3600000) / 60000);
+    
+    if (response.todayChecked) {
+      nextCheckTime.textContent = `내일 자정 (${hoursLeft}시간 ${minutesLeft}분 후)`;
+    } else {
+      nextCheckTime.textContent = "오늘 자정 또는 브라우저 시작 시";
+    }
   } catch (error) {
     console.error("설정 불러오기 실패:", error);
   }
 }
 
-// 알람 설정 저장
-async function saveAlarmSettings() {
-  const interval = parseInt(document.getElementById("intervalInput").value) || 60;
-  const delay = parseInt(document.getElementById("delayInput").value) || 1;
-  
-  // 유효성 검사
-  if (interval < 1 || interval > 1440) {
-    showToast("⚠️ 실행 간격은 1~1440분 사이로 설정하세요");
-    return;
-  }
-  
-  if (delay < 1 || delay > 60) {
-    showToast("⚠️ 첫 실행 대기는 1~60분 사이로 설정하세요");
-    return;
-  }
+// 수동 출석체크
+async function manualCheck() {
+  const btn = document.getElementById("manualCheckBtn");
+  btn.disabled = true;
+  btn.textContent = "처리 중...";
   
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: "SAVE_SETTINGS",
-      data: {
-        periodInMinutes: interval,
-        delayInMinutes: delay
-      }
-    });
+    const response = await chrome.runtime.sendMessage({ type: "MANUAL_ATTENDANCE" });
     
     if (response.success) {
-      showToast("✅ 설정이 저장되었습니다");
+      if (response.alreadyChecked) {
+        showToast("✅ 이미 출석 완료!");
+      } else {
+        showToast("✅ 출석 성공!");
+      }
     } else {
-      showToast("❌ 저장 실패");
+      showToast("❌ 출석체크 실패");
     }
   } catch (error) {
     showToast("❌ 오류 발생");
-    console.error(error);
   }
+  
+  btn.disabled = false;
+  btn.textContent = "🚀 지금 출석체크";
+  loadSettings();
+  loadLogs();
 }
+
+// 로그 저장 (클릭 시 상세보기용)
+let logsData = [];
 
 // 로그 불러오기
 async function loadLogs() {
@@ -64,26 +80,57 @@ async function loadLogs() {
     
     if (!response.logs || response.logs.length === 0) {
       container.innerHTML = '<div class="log-entry log-info">로그가 없습니다</div>';
+      logsData = [];
       return;
     }
     
-    container.innerHTML = response.logs.map(log => {
+    logsData = response.logs;
+    
+    container.innerHTML = response.logs.map((log, index) => {
       const time = formatLogTime(log.lastAttempt || log.time);
       const statusClass = log.success ? "log-success" : "log-error";
       const statusIcon = log.success ? "✅" : "❌";
       const message = log.message ? ` - ${truncate(log.message, 30)}` : "";
       
-      return `<div class="log-entry ${statusClass}">
+      return `<div class="log-entry ${statusClass}" data-index="${index}">
         <span class="log-time">${time}</span>
         ${statusIcon}${message}
       </div>`;
     }).join("");
+    
+    // 클릭 이벤트 추가
+    container.querySelectorAll('.log-entry[data-index]').forEach(entry => {
+      entry.addEventListener('click', () => {
+        const index = parseInt(entry.dataset.index);
+        showLogDetail(logsData[index]);
+      });
+    });
     
   } catch (error) {
     console.error("로그 불러오기 실패:", error);
     document.getElementById("logContainer").innerHTML = 
       '<div class="log-entry log-error">로그 불러오기 실패</div>';
   }
+}
+
+// 로그 상세 모달 표시
+function showLogDetail(log) {
+  const modal = document.getElementById('logModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalContent = document.getElementById('modalContent');
+  
+  const time = formatLogTime(log.lastAttempt || log.time);
+  const status = log.success ? '✅ 성공' : '❌ 실패';
+  
+  modalTitle.textContent = `📋 로그 상세 - ${status}`;
+  modalContent.textContent = `시간: ${time}\n\n메시지:\n${log.message || '(메시지 없음)'}`;
+  
+  modal.classList.add('show');
+}
+
+// 모달 닫기
+function closeModal() {
+  document.getElementById('logModal').classList.remove('show');
 }
 
 // 시간 포맷팅
@@ -144,10 +191,14 @@ function goBack() {
 
 // 이벤트 리스너
 document.getElementById("backBtn").addEventListener("click", goBack);
-document.getElementById("saveAlarmBtn").addEventListener("click", saveAlarmSettings);
+document.getElementById("manualCheckBtn").addEventListener("click", manualCheck);
 document.getElementById("refreshLogBtn").addEventListener("click", loadLogs);
 document.getElementById("clearLogsBtn").addEventListener("click", clearLogs);
 document.getElementById("resetAllBtn").addEventListener("click", resetAll);
+document.getElementById("modalClose").addEventListener("click", closeModal);
+document.getElementById("logModal").addEventListener("click", (e) => {
+  if (e.target.id === 'logModal') closeModal();
+});
 
 // 초기화
 loadSettings();

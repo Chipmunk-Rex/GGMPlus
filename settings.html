@@ -76,6 +76,23 @@
       opacity: 0.9;
     }
     
+    .status-value {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    
+    .status-value.success {
+      color: #4ade80;
+    }
+    
+    .status-value.error {
+      color: #f87171;
+    }
+    
+    .status-value.pending {
+      color: #fbbf24;
+    }
+    
     .setting-input {
       background: rgba(255, 255, 255, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.3);
@@ -201,6 +218,83 @@
       opacity: 1;
     }
 
+    /* Log Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      padding: 16px;
+      max-width: 340px;
+      width: 100%;
+      max-height: 80%;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .modal-content {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+
+    .log-entry {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .log-entry:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -226,14 +320,14 @@
   <div class="section">
     <div class="section-title">⏰ 자동 출석체크</div>
     <div class="setting-row">
-      <span class="setting-label">실행 간격 (분)</span>
-      <input type="number" id="intervalInput" class="setting-input" min="1" max="1440" value="60">
+      <span class="setting-label">오늘 출석</span>
+      <span id="todayStatus" class="status-value pending">확인 중...</span>
     </div>
     <div class="setting-row">
-      <span class="setting-label">첫 실행 대기 (분)</span>
-      <input type="number" id="delayInput" class="setting-input" min="1" max="60" value="1">
+      <span class="setting-label">다음 실행</span>
+      <span id="nextCheckTime" class="status-value">확인 중...</span>
     </div>
-    <button class="btn btn-save" id="saveAlarmBtn">💾 설정 저장</button>
+    <button class="btn btn-save" id="manualCheckBtn">🚀 지금 출석체크</button>
   </div>
 
   <!-- 로그 보기 -->
@@ -255,6 +349,17 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- Log Detail Modal -->
+  <div class="modal-overlay" id="logModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">📋 로그 상세</span>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
 
   <script src="settings.js"></script>
 </body>

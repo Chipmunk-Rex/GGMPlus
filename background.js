@@ -44,7 +44,7 @@ const TOKEN_REFRESH_CONFIG = {
   // 탭이 토큰을 수집할 때까지 대기 시간 (밀리초)
   waitTime: 5000,
   // 자동 갱신 활성화
-  autoRefresh: true
+  autoRefresh: true,
 };
 
 // ============================================
@@ -56,19 +56,26 @@ const TOKEN_REFRESH_CONFIG = {
  */
 async function getBearerToken() {
   try {
-    const result = await chrome.storage.local.get(["bearerToken", "tokenExpiry"]);
-    
+    const result = await chrome.storage.local.get([
+      "bearerToken",
+      "tokenExpiry",
+    ]);
+
     if (!result.bearerToken) {
-      console.warn("[GGMAuto] ⚠️ Bearer 토큰이 없습니다. 사이트 방문 후 토큰을 수집해주세요.");
+      console.warn(
+        "[GGMAuto] ⚠️ Bearer 토큰이 없습니다. 사이트 방문 후 토큰을 수집해주세요.",
+      );
       return null;
     }
-    
+
     // 토큰 만료 체크 (선택적)
     if (result.tokenExpiry && Date.now() > result.tokenExpiry) {
-      console.warn("[GGMAuto] ⚠️ Bearer 토큰이 만료되었습니다. 사이트 재방문이 필요합니다.");
+      console.warn(
+        "[GGMAuto] ⚠️ Bearer 토큰이 만료되었습니다. 사이트 재방문이 필요합니다.",
+      );
       return null;
     }
-    
+
     return result.bearerToken;
   } catch (error) {
     console.error("[GGMAuto] ❌ 토큰 조회 실패:", error);
@@ -83,14 +90,14 @@ async function getXsrfToken() {
   try {
     const cookie = await chrome.cookies.get({
       url: `https://${TARGET_DOMAIN}`,
-      name: "XSRF-TOKEN" // Laravel 기본 XSRF 쿠키명
+      name: "XSRF-TOKEN", // Laravel 기본 XSRF 쿠키명
     });
-    
+
     if (!cookie) {
       console.log("[GGMAuto] ℹ️ XSRF-TOKEN 쿠키 없음 (필수 아닐 수 있음)");
       return null;
     }
-    
+
     // URL 디코딩 (쿠키 값이 인코딩되어 있는 경우)
     return decodeURIComponent(cookie.value);
   } catch (error) {
@@ -108,21 +115,23 @@ async function refreshTokenAutomatically() {
     console.log("[GGMAuto] ℹ️ 자동 토큰 갱신이 비활성화됨");
     return false;
   }
-  
+
   console.log("[GGMAuto] 🔄 토큰 자동 갱신 시도...");
-  
+
   try {
     // 1. 백그라운드에서 탭 열기 (비활성 상태)
     const tab = await chrome.tabs.create({
       url: TOKEN_REFRESH_CONFIG.refreshUrl,
-      active: false // 백그라운드에서 열기
+      active: false, // 백그라운드에서 열기
     });
-    
+
     console.log("[GGMAuto] 📑 토큰 갱신용 탭 열림:", tab.id);
-    
+
     // 2. 페이지 로드 및 토큰 수집 대기
-    await new Promise(resolve => setTimeout(resolve, TOKEN_REFRESH_CONFIG.waitTime));
-    
+    await new Promise((resolve) =>
+      setTimeout(resolve, TOKEN_REFRESH_CONFIG.waitTime),
+    );
+
     // 3. 탭 닫기
     try {
       await chrome.tabs.remove(tab.id);
@@ -130,7 +139,7 @@ async function refreshTokenAutomatically() {
     } catch (e) {
       // 이미 닫혔을 수 있음
     }
-    
+
     // 4. 토큰 수집 확인
     const token = await getBearerToken();
     if (token) {
@@ -140,7 +149,6 @@ async function refreshTokenAutomatically() {
       console.log("[GGMAuto] ⚠️ 토큰 갱신 실패 - 로그인 필요할 수 있음");
       return false;
     }
-    
   } catch (error) {
     console.error("[GGMAuto] ❌ 토큰 자동 갱신 오류:", error);
     return false;
@@ -340,7 +348,7 @@ function showNotification(title, message) {
     iconUrl: "icons/icon128.png",
     title: `[GGMAuto] ${title}`,
     message: message,
-    priority: 2
+    priority: 2,
   });
 }
 
@@ -558,15 +566,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
     return true;
   }
-  
+
   // 로그 조회
   if (message.type === "GET_LOGS") {
-    chrome.storage.local.get(["attendanceHistory"]).then(data => {
+    chrome.storage.local.get(["attendanceHistory"]).then((data) => {
       sendResponse({ logs: data.attendanceHistory || [] });
     });
     return true;
   }
-  
+
   // 로그 삭제
   if (message.type === "CLEAR_LOGS") {
     chrome.storage.local.remove(["attendanceHistory"]).then(() => {
