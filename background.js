@@ -150,16 +150,16 @@ async function refreshTokenAutomatically() {
  */
 async function sendAttendance(retryAfterRefresh = true) {
   console.log("[GGMAuto] 🚀 출석체크 시작...", new Date().toLocaleString());
-  
+
   try {
     // 1. 토큰 수집
     let bearerToken = await getBearerToken();
     const xsrfToken = await getXsrfToken();
-    
+
     // 2. 토큰 유효성 검사 - 없으면 자동 갱신 시도
     if (!bearerToken) {
       console.log("[GGMAuto] ⚠️ 토큰 없음 - 자동 갱신 시도...");
-      
+
       if (retryAfterRefresh) {
         const refreshed = await refreshTokenAutomatically();
         if (refreshed) {
@@ -167,94 +167,110 @@ async function sendAttendance(retryAfterRefresh = true) {
           return await sendAttendance(false);
         }
       }
-      
+
       const errorMsg = "Bearer 토큰 없음 - 사이트 로그인 필요";
       console.error("[GGMAuto] ❌", errorMsg);
       await saveAttendanceResult(false, errorMsg);
       showNotification("출석체크 실패", errorMsg);
       return { success: false, error: errorMsg };
     }
-    
+
     // 3. 요청 헤더 구성
     const headers = {
       "Content-Type": ATTENDANCE_CONFIG.contentType,
-      "Authorization": `Bearer ${bearerToken}`,
-      "Accept": "application/json"
+      Authorization: `Bearer ${bearerToken}`,
+      Accept: "application/json",
     };
-    
+
     // XSRF 토큰이 있는 경우에만 추가
     if (xsrfToken) {
       headers["X-XSRF-TOKEN"] = xsrfToken;
     }
-    
+
     // 4. Fetch 요청
     const fetchOptions = {
       method: ATTENDANCE_CONFIG.method,
       headers: headers,
-      credentials: "include" // 쿠키 포함
+      credentials: "include", // 쿠키 포함
     };
-    
+
     // GET 요청이 아닌 경우에만 body 추가
     if (ATTENDANCE_CONFIG.method !== "GET" && ATTENDANCE_CONFIG.body) {
       fetchOptions.body = ATTENDANCE_CONFIG.body;
     }
-    
+
     console.log("[GGMAuto] 📡 요청 전송:", ATTENDANCE_CONFIG.url);
     console.log("[GGMAuto] 📋 헤더:", JSON.stringify(headers, null, 2));
     console.log("[GGMAuto] 📦 Body:", fetchOptions.body || "(없음)");
-    
+
     const response = await fetch(ATTENDANCE_CONFIG.url, fetchOptions);
     const responseText = await response.text();
     
+    // JSON 응답 파싱 시도 (유니코드 이스케이프 디코딩)
+    let decodedMessage = responseText;
+    try {
+      const jsonResponse = JSON.parse(responseText);
+      if (jsonResponse.msg) {
+        decodedMessage = jsonResponse.msg;
+      }
+    } catch (e) {
+      // JSON 파싱 실패 시 원본 텍스트 사용
+    }
+
     // 5. 응답 처리
     if (response.ok) {
       console.log("[GGMAuto] ✅ 출석체크 성공!", response.status);
-      console.log("[GGMAuto] 📄 응답:", responseText);
-      
-      await saveAttendanceResult(true, responseText);
+      console.log("[GGMAuto] 📄 응답:", decodedMessage);
+
+      await saveAttendanceResult(true, decodedMessage);
       showNotification("출석체크 성공", "출석체크가 완료되었습니다!");
-      
+
       return { success: true, data: responseText };
     } else {
-      const errorMsg = `HTTP ${response.status}: ${responseText}`;
-      
+      const errorMsg = `HTTP ${response.status}: ${decodedMessage}`;
+
       // 400 에러 - 이미 출석체크 완료인 경우 처리
+      console.log("[GGMAuto] 📄 응답 상태:", response.status);
+      console.log("[GGMAuto] 📄 디코딩된 메시지:", decodedMessage);
+
       if (response.status === 400) {
-        // 응답 메시지에서 "이미", "already", "완료" 등 키워드 확인
-        const alreadyChecked = /이미|완료|already|done|exist|duplicate/i.test(responseText);
-        
+        // 디코딩된 메시지에서 "이미", "already", "완료", "하셨습니다" 등 키워드 확인
+        const alreadyChecked =
+          /이미|완료|하셨습니다|already|done|exist|duplicate/i.test(
+            decodedMessage,
+          );
+
         if (alreadyChecked) {
           console.log("[GGMAuto] ✅ 오늘 이미 출석체크 완료!");
-          console.log("[GGMAuto] 📄 응답:", responseText);
-          
+          console.log("[GGMAuto] 📄 응답:", decodedMessage);
+
           await saveAttendanceResult(true, "오늘 이미 출석체크 완료", true);
           // 알림 표시 안함 (이미 출석한 건 알림 필요 없음)
-          
+
           return { success: true, alreadyChecked: true, data: responseText };
         }
       }
-      
+
       console.error("[GGMAuto] ❌ 출석체크 실패:", errorMsg);
-      
+
       // 401/403 에러 시 토큰 만료 처리
       if (response.status === 401 || response.status === 403) {
         console.warn("[GGMAuto] ⚠️ 인증 오류 - 토큰이 만료되었을 수 있습니다.");
         await chrome.storage.local.remove(["bearerToken", "tokenExpiry"]);
       }
-      
+
       await saveAttendanceResult(false, errorMsg);
       showNotification("출석체크 실패", `오류: ${response.status}`);
-      
+
       return { success: false, error: errorMsg };
     }
-    
   } catch (error) {
     const errorMsg = error.message || "네트워크 오류";
     console.error("[GGMAuto] ❌ 출석체크 예외:", error);
-    
+
     await saveAttendanceResult(false, errorMsg);
     showNotification("출석체크 실패", errorMsg);
-    
+
     return { success: false, error: errorMsg };
   }
 }
@@ -271,37 +287,37 @@ async function sendAttendance(retryAfterRefresh = true) {
  */
 async function saveAttendanceResult(success, message, alreadyChecked = false) {
   const now = new Date();
-  const today = now.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-  
+  const today = now.toISOString().split("T")[0]; // YYYY-MM-DD 형식
+
   const record = {
     lastAttempt: now.toISOString(),
     lastAttemptReadable: now.toLocaleString("ko-KR"),
     success: success,
-    message: message
+    message: message,
   };
-  
+
   if (success) {
     record.lastSuccess = now.toISOString();
     record.lastSuccessReadable = now.toLocaleString("ko-KR");
     record.todayChecked = today; // 오늘 출석체크 완료 날짜 저장
     record.alreadyCheckedToday = alreadyChecked;
   }
-  
+
   // 기존 기록 유지하면서 업데이트
   const existing = await chrome.storage.local.get(["attendanceHistory"]);
   const history = existing.attendanceHistory || [];
-  
+
   // 최근 100개 기록만 유지
   history.unshift(record);
   if (history.length > 100) {
     history.pop();
   }
-  
+
   await chrome.storage.local.set({
     ...record,
-    attendanceHistory: history
+    attendanceHistory: history,
   });
-  
+
   console.log("[GGMAuto] 💾 결과 저장 완료:", record);
 }
 
