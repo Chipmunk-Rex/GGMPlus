@@ -11,23 +11,29 @@ const ATTENDANCE_CONFIG = {
   method: "POST",
   // 요청 본문 (빈 객체)
   body: JSON.stringify({}),
-  contentType: "application/json"
+  contentType: "application/json",
 };
 
 // 📌 알람 설정 (기본값)
 const DEFAULT_ALARM_CONFIG = {
   name: "attendanceAlarm",
+  dailyAlarmName: "dailyMidnightAlarm",
   delayInMinutes: 1,
-  periodInMinutes: 60
+  periodInMinutes: 1440, // 24시간 (하루에 한 번)
 };
 
 // 📌 현재 알람 설정 가져오기
 async function getAlarmConfig() {
-  const stored = await chrome.storage.local.get(["alarmDelayMinutes", "alarmPeriodMinutes"]);
+  const stored = await chrome.storage.local.get([
+    "alarmDelayMinutes",
+    "alarmPeriodMinutes",
+  ]);
   return {
     name: DEFAULT_ALARM_CONFIG.name,
-    delayInMinutes: stored.alarmDelayMinutes || DEFAULT_ALARM_CONFIG.delayInMinutes,
-    periodInMinutes: stored.alarmPeriodMinutes || DEFAULT_ALARM_CONFIG.periodInMinutes
+    delayInMinutes:
+      stored.alarmDelayMinutes || DEFAULT_ALARM_CONFIG.delayInMinutes,
+    periodInMinutes:
+      stored.alarmPeriodMinutes || DEFAULT_ALARM_CONFIG.periodInMinutes,
   };
 }
 
@@ -343,27 +349,71 @@ function showNotification(title, message) {
 // ============================================
 
 /**
+ * 오늘 출석체크 완료 여부 확인
+ */
+async function isTodayChecked() {
+  const data = await chrome.storage.local.get(["todayChecked"]);
+  const today = new Date().toISOString().split("T")[0];
+  return data.todayChecked === today;
+}
+
+/**
+ * 자정까지 남은 시간(분) 계산
+ */
+function getMinutesUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 30, 0); // 자정 + 30초 (안전 마진)
+  const diffMs = midnight - now;
+  return Math.ceil(diffMs / 60000);
+}
+
+/**
+ * 자정 알람 설정
+ */
+async function setupMidnightAlarm() {
+  const minutesUntilMidnight = getMinutesUntilMidnight();
+  
+  await chrome.alarms.clear(DEFAULT_ALARM_CONFIG.dailyAlarmName);
+  await chrome.alarms.create(DEFAULT_ALARM_CONFIG.dailyAlarmName, {
+    delayInMinutes: minutesUntilMidnight,
+    periodInMinutes: 1440, // 24시간마다 반복
+  });
+  
+  console.log(`[GGMAuto] ⏰ 자정 알람 설정: ${minutesUntilMidnight}분 후 실행`);
+}
+
+/**
+ * 출석체크 필요 시 실행
+ */
+async function checkAndAttend() {
+  const checked = await isTodayChecked();
+  if (!checked) {
+    console.log("[GGMAuto] 📋 오늘 출석체크 미완료 - 출석체크 시도");
+    await sendAttendance();
+  } else {
+    console.log("[GGMAuto] ✅ 오늘 이미 출석체크 완료됨 - 스킵");
+  }
+}
+
+/**
  * 확장 프로그램 설치/업데이트 시
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log("[GGMAuto] 📦 확장 프로그램 설치됨:", details.reason);
-  
-  const alarmConfig = await getAlarmConfig();
-  
-  // 기존 알람 제거 후 새로 설정
-  await chrome.alarms.clear(alarmConfig.name);
-  
-  await chrome.alarms.create(alarmConfig.name, {
-    delayInMinutes: alarmConfig.delayInMinutes,
-    periodInMinutes: alarmConfig.periodInMinutes
-  });
-  
-  console.log(`[GGMAuto] ⏰ 알람 설정 완료: ${alarmConfig.delayInMinutes}분 후 첫 실행, ${alarmConfig.periodInMinutes}분마다 반복`);
-  
+
+  // 자정 알람 설정
+  await setupMidnightAlarm();
+
   // 설치 알림
   if (details.reason === "install") {
     showNotification("설치 완료", "대상 사이트 방문하여 로그인해주세요.");
   }
+  
+  // 설치/업데이트 후 출석체크 필요 여부 확인 (1분 후)
+  setTimeout(async () => {
+    await checkAndAttend();
+  }, 60000);
 });
 
 /**
@@ -371,26 +421,27 @@ chrome.runtime.onInstalled.addListener(async (details) => {
  */
 chrome.runtime.onStartup.addListener(async () => {
   console.log("[GGMAuto] 🌅 브라우저 시작됨");
+
+  // 자정 알람 재설정
+  await setupMidnightAlarm();
   
-  const alarmConfig = await getAlarmConfig();
-  
-  // 알람이 없으면 다시 설정
-  const alarm = await chrome.alarms.get(alarmConfig.name);
-  if (!alarm) {
-    await chrome.alarms.create(alarmConfig.name, {
-      delayInMinutes: alarmConfig.delayInMinutes,
-      periodInMinutes: alarmConfig.periodInMinutes
-    });
-    console.log("[GGMAuto] ⏰ 알람 재설정 완료");
-  }
+  // 브라우저 시작 시 출석체크 필요 여부 확인 (1분 후)
+  setTimeout(async () => {
+    await checkAndAttend();
+  }, 60000);
 });
 
 /**
- * 알람 발생 시
+ * 알람 발생 시 (자정)
  */
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === DEFAULT_ALARM_CONFIG.name) {
-    console.log("[GGMAuto] ⏰ 알람 트리거됨:", new Date().toLocaleString());
+  if (alarm.name === DEFAULT_ALARM_CONFIG.dailyAlarmName) {
+    console.log("[GGMAuto] ⏰ 자정 알람 트리거됨:", new Date().toLocaleString());
+    
+    // 다음 자정 알람 재설정 (정확한 시간 유지)
+    await setupMidnightAlarm();
+    
+    // 출석체크 실행
     await sendAttendance();
   }
 });
@@ -400,94 +451,105 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TOKEN_UPDATE") {
-    console.log("[GGMAuto] 🔑 토큰 업데이트 수신:", message.data ? "토큰 있음" : "토큰 없음");
-    
+    console.log(
+      "[GGMAuto] 🔑 토큰 업데이트 수신:",
+      message.data ? "토큰 있음" : "토큰 없음",
+    );
+
     const storageData = {
       bearerToken: message.data.token,
       tokenExpiry: message.data.expiry || null,
-      tokenUpdatedAt: new Date().toISOString()
+      tokenUpdatedAt: new Date().toISOString(),
     };
-    
+
     // 사용자 정보가 있으면 함께 저장
     if (message.data.userInfo) {
-      storageData.userName = message.data.userInfo.name || message.data.userInfo.username || message.data.userInfo.id || null;
+      storageData.userName =
+        message.data.userInfo.name ||
+        message.data.userInfo.username ||
+        message.data.userInfo.id ||
+        null;
       storageData.userInfo = message.data.userInfo;
       console.log("[GGMAuto] 👤 사용자 정보:", storageData.userName);
     }
-    
+
     chrome.storage.local.set(storageData).then(() => {
       console.log("[GGMAuto] 💾 토큰 저장 완료");
       sendResponse({ success: true });
     });
-    
+
     return true; // 비동기 응답을 위해 true 반환
   }
-  
+
   // 수동 출석체크 요청 (팝업 등에서 사용)
   if (message.type === "MANUAL_ATTENDANCE") {
     console.log("[GGMAuto] 🖱️ 수동 출석체크 요청");
-    sendAttendance().then(result => {
+    sendAttendance().then((result) => {
       sendResponse(result);
     });
     return true;
   }
-  
+
   // 상태 조회
   if (message.type === "GET_STATUS") {
-    chrome.storage.local.get([
-      "bearerToken", 
-      "userName",
-      "lastAttempt", 
-      "lastSuccess", 
-      "success",
-      "todayChecked"
-    ]).then(data => {
-      const today = new Date().toISOString().split('T')[0];
-      const isTodayChecked = data.todayChecked === today;
-      
-      sendResponse({
-        hasToken: !!data.bearerToken,
-        userName: data.userName || null,
-        lastAttempt: data.lastAttempt,
-        lastSuccess: data.lastSuccess,
-        lastResult: data.success,
-        todayChecked: isTodayChecked
+    chrome.storage.local
+      .get([
+        "bearerToken",
+        "userName",
+        "lastAttempt",
+        "lastSuccess",
+        "success",
+        "todayChecked",
+      ])
+      .then((data) => {
+        const today = new Date().toISOString().split("T")[0];
+        const isTodayChecked = data.todayChecked === today;
+
+        sendResponse({
+          hasToken: !!data.bearerToken,
+          userName: data.userName || null,
+          lastAttempt: data.lastAttempt,
+          lastSuccess: data.lastSuccess,
+          lastResult: data.success,
+          todayChecked: isTodayChecked,
+        });
       });
-    });
     return true;
   }
-  
+
   // 설정 조회
   if (message.type === "GET_SETTINGS") {
-    getAlarmConfig().then(config => {
+    getAlarmConfig().then((config) => {
       sendResponse({
         delayInMinutes: config.delayInMinutes,
-        periodInMinutes: config.periodInMinutes
+        periodInMinutes: config.periodInMinutes,
       });
     });
     return true;
   }
-  
+
   // 설정 저장
   if (message.type === "SAVE_SETTINGS") {
     (async () => {
       try {
         const { delayInMinutes, periodInMinutes } = message.data;
-        
+
         // 설정 저장
         await chrome.storage.local.set({
           alarmDelayMinutes: delayInMinutes,
-          alarmPeriodMinutes: periodInMinutes
+          alarmPeriodMinutes: periodInMinutes,
         });
-        
+
         // 알람 재설정
         await chrome.alarms.clear(DEFAULT_ALARM_CONFIG.name);
         await chrome.alarms.create(DEFAULT_ALARM_CONFIG.name, {
           delayInMinutes: delayInMinutes,
-          periodInMinutes: periodInMinutes
+          periodInMinutes: periodInMinutes,
         });
-        
-        console.log(`[GGMAuto] ⏰ 알람 설정 변경: ${delayInMinutes}분 후 첫 실행, ${periodInMinutes}분마다 반복`);
+
+        console.log(
+          `[GGMAuto] ⏰ 알람 설정 변경: ${delayInMinutes}분 후 첫 실행, ${periodInMinutes}분마다 반복`,
+        );
         sendResponse({ success: true });
       } catch (error) {
         console.error("[GGMAuto] ❌ 설정 저장 실패:", error);
@@ -513,21 +575,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
-  
+
   // 전체 초기화
   if (message.type === "RESET_ALL") {
     (async () => {
       try {
         // 모든 데이터 삭제
         await chrome.storage.local.clear();
-        
+
         // 알람 재설정 (기본값으로)
         await chrome.alarms.clear(DEFAULT_ALARM_CONFIG.name);
         await chrome.alarms.create(DEFAULT_ALARM_CONFIG.name, {
           delayInMinutes: DEFAULT_ALARM_CONFIG.delayInMinutes,
-          periodInMinutes: DEFAULT_ALARM_CONFIG.periodInMinutes
+          periodInMinutes: DEFAULT_ALARM_CONFIG.periodInMinutes,
         });
-        
+
         console.log("[GGMAuto] 🗑️ 전체 초기화 완료");
         sendResponse({ success: true });
       } catch (error) {
