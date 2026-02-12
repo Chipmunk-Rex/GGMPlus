@@ -8,8 +8,7 @@
     "alarms",
     "storage",
     "cookies",
-    "notifications",
-    "tabs"
+    "notifications"
   ],
 
   "host_permissions": [
