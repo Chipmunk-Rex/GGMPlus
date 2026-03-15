@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GGMPlus</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 360px;
+      min-height: 400px;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+
+    .header {
+      text-align: center;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 11px;
+      opacity: 0.75;
+    }
+
+    .tab-nav {
+      display: flex;
+      background: rgba(0, 0, 0, 0.15);
+      padding: 8px 8px 0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 10px 8px;
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    .tab-icon {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+
+    .tab-content {
+      display: none;
+      min-height: 280px;
+      padding: 16px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .card {
+      margin-bottom: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-label {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .status-value {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-value.success {
+      color: #4ade80;
+    }
+
+    .status-value.error {
+      color: #f87171;
+    }
+
+    .status-value.pending {
+      color: #fbbf24;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .btn + .btn {
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      background: #fff;
+      color: #764ba2;
+    }
+
+    .btn-primary:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-login {
+      background: #f87171;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .empty-tab {
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 8px;
+    }
+
+    .empty-tab .icon {
+      font-size: 48px;
+      opacity: 0.65;
+    }
+
+    .empty-tab p {
+      max-width: 210px;
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    .footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      text-align: center;
+      font-size: 11px;
+      opacity: 0.6;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 8px;
+      border: 2px solid rgba(118, 75, 162, 0.3);
+      border-top-color: #764ba2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>GGMPlus</h1>
+    <p>Attendance helper for ggm.gondr.net</p>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="attendance">
+      <span class="tab-icon">A</span>
+      Attendance
+    </button>
+    <button class="tab-btn" data-tab="farming">
+      <span class="tab-icon">F</span>
+      Farming
+    </button>
+    <button class="tab-btn" data-tab="calculator">
+      <span class="tab-icon">C</span>
+      Calculator
+    </button>
+  </div>
+
+  <div id="tab-attendance" class="tab-content active">
+    <div class="card">
+      <div class="status-item">
+        <span class="status-label">Login</span>
+        <span id="loginStatus" class="status-value pending">Checking...</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Today</span>
+        <span id="todayStatus" class="status-value pending">Checking...</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Last success</span>
+        <span id="lastSuccess" class="status-value">-</span>
+      </div>
+    </div>
+
+    <button id="loginBtn" class="btn btn-login" style="display: none;">Open GGM login</button>
+    <button id="checkBtn" class="btn btn-primary">Run attendance now</button>
+    <button id="settingsBtn" class="btn btn-secondary">Open logs and settings</button>
+  </div>
+
+  <div id="tab-farming" class="tab-content">
+    <div class="empty-tab">
+      <div class="icon">F</div>
+      <h3>Auto farming</h3>
+      <p>This tab is reserved for a future feature.</p>
+    </div>
+  </div>
+
+  <div id="tab-calculator" class="tab-content">
+    <div class="empty-tab">
+      <div class="icon">C</div>
+      <h3>Calculator</h3>
+      <p>This tab is reserved for a future feature.</p>
+    </div>
+  </div>
+
+  <div class="footer">GGMPlus v1.0.0</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
