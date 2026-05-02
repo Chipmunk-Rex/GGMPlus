@@ -1,0 +1,509 @@
+GGM 사이트/API 분석 정리
+작성일: 2026-05-02
+대상: https://ggm.gondr.net
+
+1. 분석 범위
+
+- 공개 사이트 HTML, CSS, 프론트엔드 번들 JS 확인
+- Vue SPA 라우터 경로 추출
+- axios 호출 기반 API 엔드포인트 추출
+- 공개 GET API 일부 응답 구조 확인
+- 사용자가 제공한 로그인 토큰으로 로그인 필요 GET API 응답 구조 확인
+- 계정 상태를 변경할 수 있는 POST/PUT/DELETE 요청은 실행하지 않음
+- 로그인 토큰, XSRF 토큰 원문은 문서에 저장하지 않음
+
+
+2. 사이트 구조
+
+사이트는 Laravel + Vue 2 계열 SPA로 보인다.
+서버는 대부분의 웹 경로에 대해 동일한 SPA HTML을 내려주고,
+실제 화면 전환은 프론트엔드 라우터가 처리한다.
+
+HTML 엔트리:
+- /css/app.css
+- /js/app.js?id=72ebcf3f9cc4fc41e3e29f2df17882f3
+
+3. 주요 프론트엔드 라우트
+
+공개/일반 라우트:
+- /
+- /user
+- /user/login
+- /user/register
+- /user/profile/:id
+- /circle
+- /circle/info/:id
+- /community
+- /community/write
+- /best
+- /project
+- /project/team/:id
+- /project/board/:id
+- /project/sit
+- /town/
+- /evaluation
+- /graduate
+- /graduate/detail/:id
+- /auth/sso
+
+중첩 라우트:
+- /interview/:year/
+- company/:role/:page
+- list/:companyId/:page
+- freeboard/:page?
+- freeboard/view/:id
+- freeboard/write
+- quest
+- shop/:category
+- devboard/:page?
+- devboard/view/:id
+- devboard/write
+- after_school
+- after_school/:termID
+- gambling
+- market
+
+관리자 관련 라우트:
+- /admin
+- circle
+- user
+- trophy
+- best
+- town
+- evaluation
+- verify
+- visitors
+- stock
+
+
+4. 공개로 확인된 GET API
+
+GET /api/circle/list
+- 동아리 목록
+- 응답 구조:
+  - list[]
+  - cnt
+- 주요 필드:
+  - id, name, background, info, owner, created_at, updated_at
+  - position, rank_point, gold, shutdown, profile_icon
+
+GET /api/circle/refresh
+- 최근 갱신 동아리 목록
+- 응답 구조:
+  - 배열
+
+GET /api/circle/info/{id}
+- 동아리 상세
+- 응답 구조:
+  - circle
+  - userList
+  - stock
+
+GET /api/user/top15/12
+GET /api/user/top15/3
+- 상위 사용자 목록
+- 응답 구조:
+  - 배열
+- 주요 필드:
+  - id, name, email, profile, info, level, exp
+  - circle_id, github 등
+- 주의:
+  - 이메일 등 개인정보성 필드가 포함됨
+
+GET /api/user/list_by_grade?grade={grade}
+- 학년별 사용자 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, name, email, profile, info, level, grade
+  - github, pixel_point, gold, fame_level, portfolio 등
+- 주의:
+  - 이메일, 자기소개 HTML/Markdown 등 개인정보성/사용자 작성 내용이 포함됨
+
+GET /api/user/status
+- 사용자/포트폴리오 통계
+- 응답 구조:
+  - userCnt
+  - portUser
+  - github
+  - portCount
+
+GET /api/user/portfolio/refresh
+- 최신 포트폴리오 목록
+- 응답 구조:
+  - 배열
+- 주요 필드:
+  - id, title, image, desc, link, owner
+  - source, manual_link, youtube, order
+
+GET /api/ad/user
+GET /api/ad/circle
+- 개인/동아리 광고 목록
+- 응답 구조:
+  - 배열
+- 주요 필드:
+  - id, x, y, w, h, image, link
+  - user_id 또는 circle_id
+  - user_name 또는 circle_name
+
+GET /api/terms
+- 작품/전시 회차 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, order, term_name, year, open
+
+GET /api/terms/articles/{termId}
+- 특정 회차 작품 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, term_id, title, desc, video_link, makers
+  - download_link, more_link, grade, images, likeCount
+
+GET /api/graduate/term
+- 졸업작품 회차 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, year, title, sub_title, logo_img, open
+
+GET /api/graduate/project?term={term}
+- 졸업작품 목록
+- 응답 구조:
+  - list[]
+
+GET /api/graduate/project/{id}
+- 졸업작품 상세
+- 응답 구조:
+  - msg
+  - project
+- 주요 필드:
+  - game_title, team_name, genre, content, title_image
+  - video_link, platform, team_count, owner, multi
+  - visual_image_1, visual_image_2, download, github
+  - trophy, graphics[], members[]
+
+GET /api/evaluation/term
+- 평가 회차 목록
+- 응답 구조:
+  - msg
+  - list[]
+
+GET /api/team/list
+- 팀 목록/기간 정보
+- 응답 구조:
+  - msg
+  - list[]
+  - daily
+  - week
+  - month
+
+
+5. 로그인 후 확인된 GET API
+
+사용자가 제공한 계정 토큰으로 ggm.gondr.net에만 읽기 전용 GET 요청을 보냈다.
+댓글 작성, 투표, 삭제, 구매, 보상 수령 등 상태 변경 요청은 실행하지 않았다.
+
+GET /api/user
+- 로그인 사용자 정보
+- 응답 구조:
+  - id, name, email, profile, info, level, exp
+  - circle_id, github, pixel_point, grade, hired, job_group 등
+
+GET /api/server_now
+- 서버 날짜
+- 응답 구조:
+  - date
+
+GET /api/interview/years
+- 면접 연도 목록
+- 응답 구조:
+  - years[]
+
+GET /api/interview/companies
+- 회사 목록
+- 응답 구조:
+  - companies[]
+- 주요 필드:
+  - id, name
+
+GET /api/interview/companies/2025/programmer/1
+- 특정 연도/직군/페이지의 회사 목록
+- 응답 구조:
+  - companies[]
+  - count
+  - pageCount
+
+GET /api/introduce?page=1&category=all
+- 자기소개서/지원 기록 목록
+- 응답 구조:
+  - data[]
+  - totalCnt
+  - msg
+  - result
+- 주요 필드:
+  - id, user_id, company_id, file, result, category
+  - name, profile, company_name
+
+GET /api/town/freeboard?category=free&page=1
+- 자유게시판 목록
+- 응답 구조:
+  - list[]
+  - count
+- 주요 필드:
+  - name, reply_cnt, id, title, writer, recommend
+  - created_at, updated_at
+
+GET /api/town/freeboard/view/{id}
+- 게시글 상세
+- 응답 구조:
+  - board
+  - replies[]
+- board 주요 필드:
+  - name, icon, id, title, content, writer
+  - recommend, recommend_list, category
+- replies 주요 필드:
+  - name, icon, id, board_id, content, writer
+
+GET /api/town/freeboard/reply?board_id={id}
+- 게시글 댓글 목록
+- 응답 구조:
+  - list[]
+
+GET /api/town/quest
+- 퀘스트 목록
+- 응답 구조:
+  - msg
+  - quests[]
+- 주요 필드:
+  - id, name, desc, reward, open, max_user
+  - owner_id, owner_name, users
+
+GET /api/town/shop
+- 상점 추천/현재 항목
+- 응답 구조:
+  - sticker
+  - skill
+  - deco
+
+GET /api/town/sticker
+- 스티커 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, title, price, images, enable
+  - author, author_name, sell_cnt
+
+GET /api/town/skills
+- 스킬 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, name, category, image, price, increase, desc
+
+GET /api/town/deco
+- 장식 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, name, category, image, price
+  - author, author_name, desc, sell_cnt
+
+GET /api/town/my_inven
+- 내 인벤토리
+- 응답 구조:
+  - stickers[]
+  - skills[]
+  - decos[]
+
+GET /api/town/drive
+- 내 드라이브
+- 응답 구조:
+  - size
+  - current
+  - fileList[]
+- fileList 주요 필드:
+  - idx, name, size
+
+GET /api/town/after_school
+- 방과후 목록
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, title, start_day, open, count
+
+GET /api/town/cheer_logs
+- 응원 로그
+- 응답 구조:
+  - logs[]
+- 주요 필드:
+  - id, writer_id, target_id, gained_fame
+  - content, writer, target
+
+GET /api/town/gamble/logs
+- 도박 로그
+- 응답 구조:
+  - list[]
+  - totalGold
+
+GET /api/town/goldbox
+- 골드박스 정보
+- 응답 구조:
+  - list[]
+
+GET /api/town/rich5
+- 골드 랭킹
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, name, gold, profile, grade
+
+GET /api/town/fame_top10
+- 명성 랭킹
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, name, profile, grade
+  - fame_level, fame_exp, trophies_count, fame_title
+
+GET /api/town/piece_top5
+- 조각 랭킹
+- 응답 구조:
+  - list[]
+- 주요 필드:
+  - id, name, piece, profile, grade
+
+GET /api/stock/market
+- 동아리 주식 시장
+- 응답 구조:
+  - locked
+  - circles[]
+- 주요 필드:
+  - id, name, profile_icon, gold, stock
+
+GET /api/stock/my
+- 내 보유 주식/주문
+- 응답 구조:
+  - holdings[]
+  - orders[]
+
+GET /api/stock/orders/{circleId}
+- 특정 동아리 주문장
+- 응답 구조:
+  - buy[]
+  - sell[]
+
+GET /api/stock/transactions/{circleId}
+- 특정 동아리 거래 내역
+- 응답 구조:
+  - 배열
+- 주요 필드:
+  - id, circle_id, buyer_id, seller_id
+  - amount, price_per_share, memo
+
+GET /api/team/init
+- 팀 기능 초기 정보
+- 응답 구조:
+  - msg
+  - team
+  - years[]
+
+GET /api/chair/info
+- 좌석/팀 정보
+- 응답 구조:
+  - year
+  - teams[]
+  - chairs[]
+  - userData
+  - allow
+
+GET /api/circle/{id}/posts
+- 동아리 게시글 목록
+- 응답 구조:
+  - posts
+  - can_write
+- posts는 페이지네이션 객체
+
+
+6. 로그인 후에도 실패한 API
+
+GET /api/team/record
+- 결과: 500
+- 인증 실패가 아니라 서버 내부 오류로 보임
+
+GET /api/team/record/daily
+- 결과: 500
+- 인증 실패가 아니라 서버 내부 오류로 보임
+
+
+7. 상태를 변경할 수 있는 주요 API
+
+아래 API들은 댓글 작성, 투표, 구매, 삭제, 등록, 수정 등 계정/서버 상태를 바꿀 수 있으므로
+실행 전에 대상과 내용을 명확히 정하고 별도 확인이 필요하다.
+
+인증/계정:
+- POST /api/login
+- GET /api/logout
+- POST /api/register
+- POST /api/fixUser
+- DELETE /api/user/withdraw
+- POST /api/sso/token
+
+댓글/게시글:
+- POST /api/town/freeboard
+- PUT /api/town/freeboard
+- DELETE /api/town/freeboard?id={id}
+- POST /api/town/freeboard/reply
+- DELETE /api/town/freeboard/reply?r_id={id}
+- PUT /api/town/freeboard/recommend
+- POST /api/town/freeboard/sticker_reply
+
+투표/추천:
+- PUT /api/best/vote
+- GET /api/user/vote_cnt/{id}
+
+동아리:
+- POST /api/circle/{circleId}/posts
+- DELETE /api/circle/posts/{id}
+- PUT /api/circle/user_add
+- PUT /api/circle/user_remove
+- PUT /api/circle/set_owner
+- POST /api/circle/donate_gold
+- POST /api/circle/give_gold
+
+상점/타운:
+- PUT /api/town/sticker/buy
+- PUT /api/town/skills/buy
+- PUT /api/town/deco/buy
+- POST /api/town/quest/enter
+- PUT /api/town/quest/enter
+- DELETE /api/town/quest/enter/?questID={id}
+- POST /api/town/goldbox/attendance
+- GET /api/town/goldbox/attendance
+- GET /api/town/goldbox/receive
+- PUT /api/town/gamble/lucky
+- PUT /api/town/gamble/range
+
+주식:
+- POST /api/stock/sell_base
+- DELETE /api/stock/order/{id}
+
+포트폴리오:
+- POST /api/user/portfolio
+- POST /api/user/portfolio/update
+- DELETE /api/user/portfolio/{id}
+- PUT /api/user/portfolio/order
+- PUT /api/user/portfolio/verify/{id}
+
+관리자:
+- /api/admin/* 대부분은 사용자/콘텐츠/평가/퀘스트/졸업작품을 변경할 수 있음
+
+
+8. 주의사항
+
+- 로그인 토큰은 비밀번호와 유사한 민감한 값이다.
+- 토큰이 채팅에 노출되었으므로, 작업 후 가능하면 재발급 또는 폐기를 권장한다.
+- 공개 API 중 일부는 이메일, 자기소개, 포트폴리오, 파일명 등 개인정보성 필드를 반환한다.
+- 분석 결과를 외부에 공유할 때는 개인 식별 정보와 토큰을 제거해야 한다.
+- 댓글 작성, 투표, 삭제, 구매, 보상 수령 같은 작업은 실제 계정 상태를 바꾸므로 실행 직전 별도 확인이 필요하다.
