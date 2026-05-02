@@ -1,8 +1,8 @@
-﻿{
+{
   "manifest_version": 3,
   "name": "GGMPlus",
-  "version": "1.0.0",
-  "description": "Attendance helper extension for ggm.gondr.net.",
+  "version": "1.1.0",
+  "description": "GGM 출석체크, 빠른 이동, 글 임시저장, 관심 알림을 제공하는 확장 프로그램",
   "permissions": [
     "alarms",
     "cookies",

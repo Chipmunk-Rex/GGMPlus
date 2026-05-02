@@ -4,6 +4,7 @@
 
 // 📌 대상 사이트 도메인
 const TARGET_DOMAIN = "ggm.gondr.net";
+const SITE_TIME_ZONE = "Asia/Seoul";
 
 // 📌 출석체크 API 설정
 const ATTENDANCE_CONFIG = {
@@ -18,9 +19,486 @@ const ATTENDANCE_CONFIG = {
 const DEFAULT_ALARM_CONFIG = {
   name: "attendanceAlarm",
   dailyAlarmName: "dailyMidnightAlarm",
+  initialCheckName: "initialAttendanceCheck",
   delayInMinutes: 1,
   periodInMinutes: 1440, // 24시간 (하루에 한 번)
 };
+
+const UTILITY_MONITOR_ALARM_NAME = "utilityMonitorAlarm";
+const MAX_ACTIVITY_ITEMS = 120;
+
+const DEFAULT_FEATURE_SETTINGS = {
+  utilityMonitorIntervalMinutes: 15,
+  notifyNewPosts: true,
+  notifyGoldboxQuest: true,
+  notifyStockWatch: true,
+  watchedBoardCategories: ["free"],
+  watchedCirclePostIds: [],
+  stockWatchCircleIds: [],
+};
+
+function getSiteDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SITE_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function normalizeTokenExpiry(expiry) {
+  if (!expiry) return null;
+
+  if (typeof expiry === "number") {
+    return expiry < 100000000000 ? expiry * 1000 : expiry;
+  }
+
+  if (typeof expiry === "string") {
+    const numeric = Number(expiry);
+    if (Number.isFinite(numeric)) {
+      return normalizeTokenExpiry(numeric);
+    }
+
+    const parsedDate = Date.parse(expiry);
+    return Number.isNaN(parsedDate) ? null : parsedDate;
+  }
+
+  return null;
+}
+
+function maskHeaders(headers) {
+  return {
+    ...headers,
+    Authorization: headers.Authorization ? "Bearer ***" : undefined,
+    "X-XSRF-TOKEN": headers["X-XSRF-TOKEN"] ? "***" : undefined,
+  };
+}
+
+function uniqueNumbers(values) {
+  return [...new Set((values || [])
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isFinite(value) && value > 0))];
+}
+
+function parseNumberList(value) {
+  if (Array.isArray(value)) {
+    return uniqueNumbers(value);
+  }
+
+  if (typeof value === "string") {
+    return uniqueNumbers(value.split(/[\s,]+/));
+  }
+
+  return [];
+}
+
+function normalizeBoardCategories(value) {
+  const categories = Array.isArray(value) ? value : String(value || "").split(/[\s,]+/);
+  const cleaned = categories
+    .map((category) => String(category || "").trim().toLowerCase())
+    .filter((category) => /^[a-z0-9_-]+$/.test(category));
+  return [...new Set(cleaned)].slice(0, 6);
+}
+
+function normalizeFeatureSettings(raw = {}) {
+  return {
+    utilityMonitorIntervalMinutes: Math.max(
+      5,
+      Number.parseInt(
+        raw.utilityMonitorIntervalMinutes ||
+          DEFAULT_FEATURE_SETTINGS.utilityMonitorIntervalMinutes,
+        10,
+      ) || DEFAULT_FEATURE_SETTINGS.utilityMonitorIntervalMinutes,
+    ),
+    notifyNewPosts: raw.notifyNewPosts !== false,
+    notifyGoldboxQuest: raw.notifyGoldboxQuest !== false,
+    notifyStockWatch: raw.notifyStockWatch !== false,
+    watchedBoardCategories:
+      normalizeBoardCategories(raw.watchedBoardCategories).length > 0
+        ? normalizeBoardCategories(raw.watchedBoardCategories)
+        : DEFAULT_FEATURE_SETTINGS.watchedBoardCategories,
+    watchedCirclePostIds: parseNumberList(raw.watchedCirclePostIds),
+    stockWatchCircleIds: parseNumberList(raw.stockWatchCircleIds),
+  };
+}
+
+function hasEnabledUtilityMonitor(settings) {
+  return (
+    settings.notifyNewPosts ||
+    settings.notifyGoldboxQuest ||
+    settings.notifyStockWatch
+  );
+}
+
+async function getFeatureSettings() {
+  const keys = Object.keys(DEFAULT_FEATURE_SETTINGS);
+  const stored = await chrome.storage.local.get(keys);
+  return normalizeFeatureSettings(stored);
+}
+
+async function saveFeatureSettings(settings) {
+  const normalized = normalizeFeatureSettings(settings);
+  await chrome.storage.local.set(normalized);
+  return normalized;
+}
+
+function toGgmUrl(pathOrUrl) {
+  if (!pathOrUrl) return `https://${TARGET_DOMAIN}`;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const path = String(pathOrUrl).startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  return `https://${TARGET_DOMAIN}${path}`;
+}
+
+async function openGgmPage(pathOrUrl) {
+  await chrome.tabs.create({ url: toGgmUrl(pathOrUrl) });
+}
+
+async function requestGgmApi(path, options = {}) {
+  const authRequired = options.authRequired !== false;
+  const bearerToken = await getBearerToken();
+
+  if (authRequired && !bearerToken) {
+    throw new Error("로그인 토큰이 없어 확인할 수 없습니다.");
+  }
+
+  const headers = {
+    Accept: "application/json",
+  };
+
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  }
+
+  const response = await fetch(toGgmUrl(path), {
+    method: "GET",
+    headers,
+    credentials: "include",
+  });
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+  }
+
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error("JSON 응답을 해석하지 못했습니다.");
+  }
+}
+
+async function saveActivity(type, title, message, url = null, meta = {}) {
+  try {
+    const stored = await chrome.storage.local.get(["activityTimeline"]);
+    const timeline = Array.isArray(stored.activityTimeline)
+      ? stored.activityTimeline
+      : [];
+    timeline.unshift({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      time: new Date().toISOString(),
+      type,
+      title,
+      message,
+      url,
+      meta,
+    });
+
+    await chrome.storage.local.set({
+      activityTimeline: timeline.slice(0, MAX_ACTIVITY_ITEMS),
+    });
+  } catch (error) {
+    console.warn("[GGMAuto] 활동 기록 저장 실패:", error);
+  }
+}
+
+async function createNotificationWithUrl(title, message, pathOrUrl) {
+  const id = `ggmplus-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  chrome.notifications.create(id, {
+    type: "basic",
+    iconUrl: "icons/icon128.png",
+    title: `[GGMPlus] ${title}`,
+    message,
+    priority: 2,
+  });
+
+  if (pathOrUrl) {
+    const stored = await chrome.storage.local.get(["notificationUrls"]);
+    const notificationUrls = stored.notificationUrls || {};
+    notificationUrls[id] = toGgmUrl(pathOrUrl);
+    await chrome.storage.local.set({ notificationUrls });
+  }
+
+  return id;
+}
+
+function extractArray(data, candidates) {
+  if (Array.isArray(data)) return data;
+
+  for (const key of candidates) {
+    const value = data && data[key];
+    if (Array.isArray(value)) return value;
+  }
+  return [];
+}
+
+function extractPosts(data) {
+  const posts = data && data.posts;
+  if (Array.isArray(posts)) return posts;
+  if (posts && Array.isArray(posts.data)) return posts.data;
+  if (posts && Array.isArray(posts.list)) return posts.list;
+  return [];
+}
+
+function getMaxNumericId(items) {
+  return Math.max(0, ...items.map((item) => Number(item.id)).filter(Number.isFinite));
+}
+
+function isOpenFlag(value) {
+  return value === true || value === 1 || value === "1" || value === "true" || value === "Y";
+}
+
+function isQuestFull(quest) {
+  const maxUser = Number(quest.max_user || quest.maxUser || 0);
+  if (!maxUser) return false;
+
+  if (Array.isArray(quest.users)) {
+    return quest.users.length >= maxUser;
+  }
+
+  const count = Number(quest.user_count || quest.count || 0);
+  return count >= maxUser;
+}
+
+function normalizeStockValue(stock) {
+  if (stock && typeof stock === "object") {
+    const candidate =
+      stock.price ??
+      stock.current ??
+      stock.value ??
+      stock.point ??
+      stock.amount ??
+      stock.count;
+    return Number.isFinite(Number(candidate)) ? Number(candidate) : JSON.stringify(stock);
+  }
+
+  return Number.isFinite(Number(stock)) ? Number(stock) : String(stock ?? "");
+}
+
+function getUtilityStateDefaults() {
+  return {
+    boardLastIds: {},
+    circlePostLastIds: {},
+    questSignature: null,
+    goldboxReminderDate: null,
+    stockSnapshots: {},
+  };
+}
+
+async function getUtilityState() {
+  const stored = await chrome.storage.local.get(["utilityMonitorState"]);
+  return {
+    ...getUtilityStateDefaults(),
+    ...(stored.utilityMonitorState || {}),
+  };
+}
+
+async function setUtilityState(state) {
+  await chrome.storage.local.set({ utilityMonitorState: state });
+}
+
+async function monitorBoardPosts(settings, state, summary) {
+  if (!settings.notifyNewPosts) return;
+
+  const nextLastIds = { ...(state.boardLastIds || {}) };
+
+  for (const category of settings.watchedBoardCategories) {
+    const data = await requestGgmApi(
+      `/api/town/freeboard?category=${encodeURIComponent(category)}&page=1`,
+    );
+    const list = extractArray(data, ["list", "data"]);
+    const maxId = getMaxNumericId(list);
+    const previousMaxId = Number(nextLastIds[category] || 0);
+
+    if (previousMaxId > 0 && maxId > previousMaxId) {
+      const newItems = list.filter((item) => Number(item.id) > previousMaxId);
+      const newest = newItems[0] || list[0] || {};
+      const title = newest.title || `${category} 게시판 새 글`;
+      const message = `${category} 게시판에 새 글 ${newItems.length}개가 올라왔습니다.`;
+      await createNotificationWithUrl("새 게시글", message, "/town/freeboard");
+      await saveActivity("post", "새 게시글", `${message}\n${title}`, "/town/freeboard", {
+        category,
+        count: newItems.length,
+      });
+      summary.notifications += 1;
+    }
+
+    if (maxId > previousMaxId) {
+      nextLastIds[category] = maxId;
+    }
+  }
+
+  state.boardLastIds = nextLastIds;
+}
+
+async function monitorCirclePosts(settings, state, summary) {
+  if (!settings.notifyNewPosts || settings.watchedCirclePostIds.length === 0) return;
+
+  const nextLastIds = { ...(state.circlePostLastIds || {}) };
+
+  for (const circleId of settings.watchedCirclePostIds) {
+    const data = await requestGgmApi(`/api/circle/${circleId}/posts`);
+    const list = extractPosts(data);
+    const maxId = getMaxNumericId(list);
+    const previousMaxId = Number(nextLastIds[circleId] || 0);
+
+    if (previousMaxId > 0 && maxId > previousMaxId) {
+      const newItems = list.filter((item) => Number(item.id) > previousMaxId);
+      const message = `동아리 ${circleId}에 새 글 ${newItems.length}개가 올라왔습니다.`;
+      const url = `/circle/info/${circleId}`;
+      await createNotificationWithUrl("동아리 새 글", message, url);
+      await saveActivity("circle-post", "동아리 새 글", message, url, {
+        circleId,
+        count: newItems.length,
+      });
+      summary.notifications += 1;
+    }
+
+    if (maxId > previousMaxId) {
+      nextLastIds[circleId] = maxId;
+    }
+  }
+
+  state.circlePostLastIds = nextLastIds;
+}
+
+async function monitorGoldboxAndQuest(settings, state, summary) {
+  if (!settings.notifyGoldboxQuest) return;
+
+  const today = getSiteDateKey();
+
+  if (state.goldboxReminderDate !== today) {
+    const goldbox = await requestGgmApi("/api/town/goldbox");
+    const list = extractArray(goldbox, ["list", "data"]);
+
+    if (list.length > 0) {
+      await createNotificationWithUrl(
+        "골드박스 확인",
+        "오늘 확인할 골드박스 정보가 있습니다.",
+        "/town",
+      );
+      await saveActivity(
+        "goldbox",
+        "골드박스 확인",
+        "오늘 확인할 골드박스 정보가 있습니다.",
+        "/town",
+      );
+      summary.notifications += 1;
+      state.goldboxReminderDate = today;
+    }
+  }
+
+  const questData = await requestGgmApi("/api/town/quest");
+  const quests = extractArray(questData, ["quests", "list", "data"]);
+  const availableQuests = quests.filter((quest) => isOpenFlag(quest.open) && !isQuestFull(quest));
+  const signature = availableQuests
+    .map((quest) => `${quest.id}:${Array.isArray(quest.users) ? quest.users.length : quest.count || 0}`)
+    .join("|");
+
+  if (state.questSignature !== null && signature && signature !== state.questSignature) {
+    const message = `참여 가능한 퀘스트 ${availableQuests.length}개를 확인해보세요.`;
+    await createNotificationWithUrl("퀘스트 알림", message, "/town/quest");
+    await saveActivity("quest", "퀘스트 알림", message, "/town/quest", {
+      questIds: availableQuests.map((quest) => quest.id),
+    });
+    summary.notifications += 1;
+  }
+
+  state.questSignature = signature;
+}
+
+async function monitorStockWatch(settings, state, summary) {
+  if (!settings.notifyStockWatch || settings.stockWatchCircleIds.length === 0) return;
+
+  const market = await requestGgmApi("/api/stock/market");
+  const circles = extractArray(market, ["circles", "list", "data"]);
+  const snapshots = { ...(state.stockSnapshots || {}) };
+
+  for (const circleId of settings.stockWatchCircleIds) {
+    const circle = circles.find((item) => Number(item.id) === Number(circleId));
+    if (!circle) continue;
+
+    const nextSnapshot = {
+      name: circle.name || `동아리 ${circleId}`,
+      stock: normalizeStockValue(circle.stock),
+      gold: Number.isFinite(Number(circle.gold)) ? Number(circle.gold) : null,
+      updatedAt: new Date().toISOString(),
+    };
+    const previous = snapshots[circleId];
+
+    if (
+      previous &&
+      (previous.stock !== nextSnapshot.stock || previous.gold !== nextSnapshot.gold)
+    ) {
+      const message = `${nextSnapshot.name} 주식 정보가 변경되었습니다.`;
+      await createNotificationWithUrl("주식 관심 알림", message, "/town/market");
+      await saveActivity("stock", "주식 관심 알림", message, "/town/market", {
+        circleId,
+        previous,
+        next: nextSnapshot,
+      });
+      summary.notifications += 1;
+    }
+
+    snapshots[circleId] = nextSnapshot;
+  }
+
+  state.stockSnapshots = snapshots;
+}
+
+async function runUtilityMonitor(options = {}) {
+  const settings = await getFeatureSettings();
+  const summary = {
+    notifications: 0,
+    errors: [],
+    checkedAt: new Date().toISOString(),
+  };
+
+  if (!hasEnabledUtilityMonitor(settings)) {
+    return summary;
+  }
+
+  const state = await getUtilityState();
+  const monitors = [
+    () => monitorBoardPosts(settings, state, summary),
+    () => monitorCirclePosts(settings, state, summary),
+    () => monitorGoldboxAndQuest(settings, state, summary),
+    () => monitorStockWatch(settings, state, summary),
+  ];
+
+  for (const monitor of monitors) {
+    try {
+      await monitor();
+    } catch (error) {
+      console.warn("[GGMAuto] 유틸리티 모니터 실패:", error);
+      summary.errors.push(error.message || String(error));
+    }
+  }
+
+  await setUtilityState(state);
+
+  if (options.manual) {
+    const message = summary.errors.length
+      ? `확인 완료, 오류 ${summary.errors.length}건`
+      : `확인 완료, 알림 ${summary.notifications}건`;
+    await saveActivity("monitor", "수동 모니터링", message, null, summary);
+  }
+
+  return summary;
+}
 
 // 📌 현재 알람 설정 가져오기
 async function getAlarmConfig() {
@@ -69,10 +547,12 @@ async function getBearerToken() {
     }
 
     // 토큰 만료 체크 (선택적)
-    if (result.tokenExpiry && Date.now() > result.tokenExpiry) {
+    const tokenExpiry = normalizeTokenExpiry(result.tokenExpiry);
+    if (tokenExpiry && Date.now() > tokenExpiry) {
       console.warn(
         "[GGMAuto] ⚠️ Bearer 토큰이 만료되었습니다. 사이트 재방문이 필요합니다.",
       );
+      await chrome.storage.local.remove(["bearerToken", "tokenExpiry"]);
       return null;
     }
 
@@ -214,7 +694,7 @@ async function sendAttendance(retryAfterRefresh = true) {
     }
 
     console.log("[GGMAuto] 📡 요청 전송:", ATTENDANCE_CONFIG.url);
-    console.log("[GGMAuto] 📋 헤더:", JSON.stringify(headers, null, 2));
+    console.log("[GGMAuto] 📋 헤더:", JSON.stringify(maskHeaders(headers), null, 2));
     console.log("[GGMAuto] 📦 Body:", fetchOptions.body || "(없음)");
 
     const response = await fetch(ATTENDANCE_CONFIG.url, fetchOptions);
@@ -301,7 +781,7 @@ async function sendAttendance(retryAfterRefresh = true) {
  */
 async function saveAttendanceResult(success, message, alreadyChecked = false) {
   const now = new Date();
-  const today = now.toISOString().split("T")[0]; // YYYY-MM-DD 형식
+  const today = getSiteDateKey(now); // YYYY-MM-DD 형식
 
   const record = {
     lastAttempt: now.toISOString(),
@@ -332,6 +812,14 @@ async function saveAttendanceResult(success, message, alreadyChecked = false) {
     attendanceHistory: history,
   });
 
+  await saveActivity(
+    success ? "attendance" : "attendance-error",
+    success ? "출석체크 성공" : "출석체크 실패",
+    message,
+    "/town",
+    { alreadyChecked },
+  );
+
   console.log("[GGMAuto] 💾 결과 저장 완료:", record);
 }
 
@@ -361,7 +849,7 @@ function showNotification(title, message) {
  */
 async function isTodayChecked() {
   const data = await chrome.storage.local.get(["todayChecked"]);
-  const today = new Date().toISOString().split("T")[0];
+  const today = getSiteDateKey();
   return data.todayChecked === today;
 }
 
@@ -391,6 +879,50 @@ async function setupMidnightAlarm() {
   console.log(`[GGMAuto] ⏰ 자정 알람 설정: ${minutesUntilMidnight}분 후 실행`);
 }
 
+async function setupAttendanceAlarm(config) {
+  const alarmConfig = config || await getAlarmConfig();
+
+  await chrome.alarms.clear(DEFAULT_ALARM_CONFIG.name);
+  await chrome.alarms.create(DEFAULT_ALARM_CONFIG.name, {
+    delayInMinutes: Math.max(1, Number(alarmConfig.delayInMinutes) || DEFAULT_ALARM_CONFIG.delayInMinutes),
+    periodInMinutes: Math.max(1, Number(alarmConfig.periodInMinutes) || DEFAULT_ALARM_CONFIG.periodInMinutes),
+  });
+
+  console.log(
+    `[GGMAuto] ⏰ 주기 알람 설정: ${alarmConfig.delayInMinutes}분 후 첫 실행, ${alarmConfig.periodInMinutes}분마다 반복`,
+  );
+}
+
+async function setupUtilityMonitorAlarm(config) {
+  const settings = config || await getFeatureSettings();
+
+  await chrome.alarms.clear(UTILITY_MONITOR_ALARM_NAME);
+  if (!hasEnabledUtilityMonitor(settings)) {
+    console.log("[GGMAuto] 유틸리티 모니터 알람 비활성화");
+    return;
+  }
+
+  const interval = Math.max(5, Number(settings.utilityMonitorIntervalMinutes) || 15);
+  await chrome.alarms.create(UTILITY_MONITOR_ALARM_NAME, {
+    delayInMinutes: Math.min(5, interval),
+    periodInMinutes: interval,
+  });
+
+  console.log(`[GGMAuto] 유틸리티 모니터 알람 설정: ${interval}분마다 반복`);
+}
+
+async function scheduleInitialCheckAlarm() {
+  const alarmConfig = await getAlarmConfig();
+  await chrome.alarms.clear(DEFAULT_ALARM_CONFIG.initialCheckName);
+  if (Number(alarmConfig.delayInMinutes) <= DEFAULT_ALARM_CONFIG.delayInMinutes) {
+    return;
+  }
+
+  await chrome.alarms.create(DEFAULT_ALARM_CONFIG.initialCheckName, {
+    delayInMinutes: DEFAULT_ALARM_CONFIG.delayInMinutes,
+  });
+}
+
 /**
  * 출석체크 필요 시 실행
  */
@@ -412,16 +944,15 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   // 자정 알람 설정
   await setupMidnightAlarm();
+  await setupAttendanceAlarm();
+  await setupUtilityMonitorAlarm();
 
   // 설치 알림
   if (details.reason === "install") {
     showNotification("설치 완료", "대상 사이트 방문하여 로그인해주세요.");
   }
   
-  // 설치/업데이트 후 출석체크 필요 여부 확인 (1분 후)
-  setTimeout(async () => {
-    await checkAndAttend();
-  }, 60000);
+  await scheduleInitialCheckAlarm();
 });
 
 /**
@@ -432,11 +963,10 @@ chrome.runtime.onStartup.addListener(async () => {
 
   // 자정 알람 재설정
   await setupMidnightAlarm();
+  await setupAttendanceAlarm();
+  await setupUtilityMonitorAlarm();
   
-  // 브라우저 시작 시 출석체크 필요 여부 확인 (1분 후)
-  setTimeout(async () => {
-    await checkAndAttend();
-  }, 60000);
+  await scheduleInitialCheckAlarm();
 });
 
 /**
@@ -451,7 +981,30 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     
     // 출석체크 실행
     await sendAttendance();
+  } else if (
+    alarm.name === DEFAULT_ALARM_CONFIG.name ||
+    alarm.name === DEFAULT_ALARM_CONFIG.initialCheckName
+  ) {
+    console.log("[GGMAuto] ⏰ 출석체크 알람 트리거됨:", alarm.name);
+    await checkAndAttend();
+  } else if (alarm.name === UTILITY_MONITOR_ALARM_NAME) {
+    console.log("[GGMAuto] 유틸리티 모니터 알람 트리거됨");
+    await runUtilityMonitor();
   }
+});
+
+chrome.notifications.onClicked.addListener(async (notificationId) => {
+  const stored = await chrome.storage.local.get(["notificationUrls"]);
+  const notificationUrls = stored.notificationUrls || {};
+  const url = notificationUrls[notificationId];
+
+  if (url) {
+    await openGgmPage(url);
+    delete notificationUrls[notificationId];
+    await chrome.storage.local.set({ notificationUrls });
+  }
+
+  chrome.notifications.clear(notificationId);
 });
 
 /**
@@ -466,7 +1019,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const storageData = {
       bearerToken: message.data.token,
-      tokenExpiry: message.data.expiry || null,
+      tokenExpiry: normalizeTokenExpiry(message.data.expiry),
       tokenUpdatedAt: new Date().toISOString(),
     };
 
@@ -510,7 +1063,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         "todayChecked",
       ])
       .then((data) => {
-        const today = new Date().toISOString().split("T")[0];
+        const today = getSiteDateKey();
         const isTodayChecked = data.todayChecked === today;
 
         sendResponse({
@@ -548,12 +1101,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           alarmPeriodMinutes: periodInMinutes,
         });
 
-        // 알람 재설정
-        await chrome.alarms.clear(DEFAULT_ALARM_CONFIG.name);
-        await chrome.alarms.create(DEFAULT_ALARM_CONFIG.name, {
-          delayInMinutes: delayInMinutes,
-          periodInMinutes: periodInMinutes,
-        });
+        await setupAttendanceAlarm({ delayInMinutes, periodInMinutes });
 
         console.log(
           `[GGMAuto] ⏰ 알람 설정 변경: ${delayInMinutes}분 후 첫 실행, ${periodInMinutes}분마다 반복`,
@@ -584,6 +1132,78 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // 유틸리티 기능 설정 조회
+  if (message.type === "GET_FEATURE_SETTINGS") {
+    getFeatureSettings().then((settings) => {
+      sendResponse(settings);
+    });
+    return true;
+  }
+
+  // 유틸리티 기능 설정 저장
+  if (message.type === "SAVE_FEATURE_SETTINGS") {
+    (async () => {
+      try {
+        const settings = await saveFeatureSettings(message.data || {});
+        await setupUtilityMonitorAlarm(settings);
+        await saveActivity(
+          "settings",
+          "알림 설정 변경",
+          "유틸리티 알림 설정을 저장했습니다.",
+        );
+        sendResponse({ success: true, settings });
+      } catch (error) {
+        console.error("[GGMAuto] 유틸리티 설정 저장 실패:", error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true;
+  }
+
+  // 유틸리티 모니터 수동 실행
+  if (message.type === "RUN_UTILITY_MONITOR") {
+    runUtilityMonitor({ manual: true }).then((summary) => {
+      sendResponse({ success: true, summary });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  // GGM 페이지 열기
+  if (message.type === "OPEN_GGM_PAGE") {
+    openGgmPage(message.url || "/").then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  // 활동 타임라인 조회
+  if (message.type === "GET_ACTIVITY") {
+    chrome.storage.local.get(["activityTimeline"]).then((data) => {
+      sendResponse({ items: data.activityTimeline || [] });
+    });
+    return true;
+  }
+
+  // 활동 타임라인 삭제
+  if (message.type === "CLEAR_ACTIVITY") {
+    chrome.storage.local.remove(["activityTimeline"]).then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  // 글/댓글 임시저장 데이터 삭제
+  if (message.type === "CLEAR_DRAFTS") {
+    chrome.storage.local.remove(["ggmDrafts"]).then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+
   // 전체 초기화
   if (message.type === "RESET_ALL") {
     (async () => {
@@ -591,12 +1211,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // 모든 데이터 삭제
         await chrome.storage.local.clear();
 
-        // 알람 재설정 (기본값으로)
-        await chrome.alarms.clear(DEFAULT_ALARM_CONFIG.name);
-        await chrome.alarms.create(DEFAULT_ALARM_CONFIG.name, {
-          delayInMinutes: DEFAULT_ALARM_CONFIG.delayInMinutes,
-          periodInMinutes: DEFAULT_ALARM_CONFIG.periodInMinutes,
-        });
+        await setupMidnightAlarm();
+        await setupAttendanceAlarm(DEFAULT_ALARM_CONFIG);
+        await setupUtilityMonitorAlarm(DEFAULT_FEATURE_SETTINGS);
 
         console.log("[GGMAuto] 🗑️ 전체 초기화 완료");
         sendResponse({ success: true });
