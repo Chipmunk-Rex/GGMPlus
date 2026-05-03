@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div class="app">
+    <header class="page-head">
+      <div class="page-top">
+        <button class="back-btn" id="backBtn">← 홈</button>
+        <div class="top-actions">
+          <button class="back-btn" id="featureSettingsBtn">화면 보조 설정</button>
+          <button class="icon-btn" id="globalSettingsBtn" title="전체 설정">⚙</button>
+        </div>
+      </div>
+      <h1 class="page-title">사이트 화면 보조</h1>
+      <p class="page-subtitle">GGM Town 화면 위에 바로 적용되는 편의 기능만 모았습니다.</p>
+    </header>
+    <main class="page">
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark green">읽</span>
+            <div>
+              <div class="card-title">자유게시판 읽음 표시</div>
+              <div class="card-subtitle">읽은 글을 목록에서 회색으로 표시합니다.</div>
+            </div>
+          </div>
+          <span id="readPostBadge" class="badge pending">확인 중</span>
+        </div>
+        <div class="card-body">
+          <div class="metric-grid">
+            <div class="metric">
+              <span class="metric-label">저장된 읽음</span>
+              <span id="readPostCount" class="metric-value">확인 중...</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">적용 위치</span>
+              <span class="metric-value">자유게시판</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button id="openFreeboardBtn" class="btn btn-primary">자유게시판 열기</button>
+            <button id="openSettingsBtn" class="btn btn-secondary">설정</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="site.js"></script>
+</body>
+</html>

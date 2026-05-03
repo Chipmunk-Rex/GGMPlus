@@ -1,269 +1,255 @@
-async function updateStatus() {
-  try {
-    const response = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
+const QUICK_LINKS = [
+  { id: "freeboard", label: "자유게시판", icon: "게", url: "/town/freeboard", tone: "" },
+  { id: "quest", label: "퀘스트", icon: "퀘", url: "/town/quest", tone: "green" },
+  { id: "market", label: "주식", icon: "주", url: "/town/market", tone: "purple" },
+  { id: "shop", label: "상점", icon: "상", url: "/town/shop/sticker", tone: "orange" },
+  { id: "circle", label: "동아리", icon: "동", url: "/circle", tone: "" },
+  { id: "project", label: "프로젝트", icon: "프", url: "/project", tone: "green" },
+  { id: "graduate", label: "졸업작품", icon: "졸", url: "/graduate", tone: "orange" },
+  { id: "portfolio", label: "포트폴리오", icon: "포", url: "/portfolio", tone: "" },
+  { id: "user", label: "내 정보", icon: "나", url: "/user", tone: "green" },
+];
 
-    const loginStatus = document.getElementById("loginStatus");
-    const loginBtn = document.getElementById("loginBtn");
-    const checkBtn = document.getElementById("checkBtn");
+const FEATURES = [
+  {
+    id: "attendance",
+    title: "출석체크",
+    desc: "출석 상태와 수동 실행",
+    icon: "출",
+    tone: "",
+    page: "attendance.html",
+  },
+  {
+    id: "launcher",
+    title: "빠른 이동 전체",
+    desc: "모든 바로가기 보기",
+    icon: "이",
+    tone: "green",
+    page: "launcher.html",
+  },
+  {
+    id: "alerts",
+    title: "관심 알림",
+    desc: "새 글, 퀘스트, 주식 확인",
+    icon: "알",
+    tone: "orange",
+    page: "alerts.html",
+  },
+  {
+    id: "drafts",
+    title: "임시저장",
+    desc: "저장된 글과 댓글 관리",
+    icon: "글",
+    tone: "purple",
+    page: "drafts.html",
+  },
+  {
+    id: "site",
+    title: "사이트 화면 보조",
+    desc: "사이트 위 편의 기능",
+    icon: "화",
+    tone: "teal",
+    page: "site.html",
+  },
+  {
+    id: "settings",
+    title: "전체 설정",
+    desc: "토큰, 로그, 초기화",
+    icon: "설",
+    tone: "red",
+    page: "settings.html",
+  },
+];
 
-    if (response.hasToken && response.userName) {
-      loginStatus.textContent = response.userName;
-      loginStatus.className = "status-value success";
-      loginBtn.style.display = "none";
-      checkBtn.disabled = false;
-    } else if (response.hasToken) {
-      loginStatus.textContent = "로그인됨";
-      loginStatus.className = "status-value success";
-      loginBtn.style.display = "none";
-      checkBtn.disabled = false;
-    } else {
-      loginStatus.textContent = "로그인 필요";
-      loginStatus.className = "status-value error";
-      loginBtn.style.display = "block";
-      checkBtn.disabled = true;
-    }
-
-    const todayStatus = document.getElementById("todayStatus");
-    if (response.todayChecked) {
-      todayStatus.textContent = "완료";
-      todayStatus.className = "status-value success";
-      checkBtn.textContent = "오늘 출석 완료";
-      checkBtn.disabled = true;
-    } else if (response.hasToken) {
-      todayStatus.textContent = "미완료";
-      todayStatus.className = "status-value pending";
-      checkBtn.textContent = "수동 출석체크";
-      checkBtn.disabled = false;
-    } else {
-      todayStatus.textContent = "-";
-      todayStatus.className = "status-value";
-    }
-
-    const lastSuccess = document.getElementById("lastSuccess");
-    lastSuccess.textContent = response.lastSuccess
-      ? formatDate(response.lastSuccess)
-      : "-";
-  } catch (error) {
-    console.error("상태 조회 실패:", error);
-  }
-}
-
-async function updateFeatureSummary() {
-  try {
-    const settings = await chrome.runtime.sendMessage({ type: "GET_FEATURE_SETTINGS" });
-    const activeCount = [
-      settings.notifyNewPosts,
-      settings.notifyGoldboxQuest,
-      settings.notifyStockWatch,
-    ].filter(Boolean).length;
-
-    const monitorSummary = document.getElementById("monitorSummary");
-    monitorSummary.textContent = activeCount > 0 ? `${activeCount}개 활성` : "꺼짐";
-    monitorSummary.className = activeCount > 0 ? "status-value success" : "status-value";
-
-    document.getElementById("utilityInterval").textContent =
-      `${settings.utilityMonitorIntervalMinutes}분`;
-    setStatusText("postMonitorStatus", settings.notifyNewPosts, "활성", "꺼짐");
-    setStatusText("questMonitorStatus", settings.notifyGoldboxQuest, "활성", "꺼짐");
-    setStatusText("stockMonitorStatus", settings.notifyStockWatch, "활성", "꺼짐");
-  } catch (error) {
-    console.error("기능 설정 조회 실패:", error);
-  }
-}
-
-function setStatusText(id, enabled, onText, offText) {
-  const element = document.getElementById(id);
-  element.textContent = enabled ? onText : offText;
-  element.className = enabled ? "status-value success" : "status-value";
-}
-
-async function loadActivity() {
-  const container = document.getElementById("activityList");
-
-  try {
-    const response = await chrome.runtime.sendMessage({ type: "GET_ACTIVITY" });
-    const items = response.items || [];
-    container.replaceChildren();
-
-    if (items.length === 0) {
-      container.appendChild(createEmptyState("아직 활동 기록이 없습니다."));
-      return;
-    }
-
-    items.slice(0, 8).forEach((item) => {
-      container.appendChild(createActivityItem(item));
-    });
-  } catch (error) {
-    container.replaceChildren(createEmptyState("활동 기록을 불러오지 못했습니다."));
-  }
-}
-
-function createActivityItem(item) {
-  const button = document.createElement("button");
-  button.className = "activity-item";
-  button.type = "button";
-
-  const title = document.createElement("span");
-  title.className = "activity-title";
-  title.textContent = item.title || "활동";
-
-  const meta = document.createElement("span");
-  meta.className = "activity-meta";
-  meta.textContent = `${formatDate(item.time)} · ${item.message || ""}`;
-
-  button.append(title, meta);
-  if (item.url) {
-    button.addEventListener("click", () => openGgmPage(item.url));
-  } else {
-    button.disabled = true;
-  }
-
-  return button;
-}
-
-function createEmptyState(message) {
-  const element = document.createElement("div");
-  element.className = "empty-state";
-  element.textContent = message;
-  return element;
-}
-
-function formatDate(isoString) {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "-";
-
-  const now = new Date();
-  const diff = now - date;
-
-  if (diff >= 0 && diff < 60000) {
-    return "방금 전";
-  }
-
-  if (diff >= 0 && diff < 3600000) {
-    return `${Math.floor(diff / 60000)}분 전`;
-  }
-
-  if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
-  }
-
-  return date.toLocaleDateString("ko-KR", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-async function manualCheck() {
-  const btn = document.getElementById("checkBtn");
-
-  btn.disabled = true;
-  const spinner = document.createElement("span");
-  spinner.className = "spinner";
-  btn.replaceChildren(spinner, document.createTextNode("처리 중..."));
-
-  try {
-    const response = await chrome.runtime.sendMessage({ type: "MANUAL_ATTENDANCE" });
-
-    if (response.success) {
-      btn.textContent = response.alreadyChecked ? "이미 출석 완료" : "출석 성공";
-    } else {
-      btn.textContent = "실패";
-    }
-
-    setTimeout(() => {
-      updateStatus();
-      loadActivity();
-    }, 1500);
-  } catch (error) {
-    btn.textContent = "오류 발생";
-    setTimeout(updateStatus, 1500);
-  }
-}
-
-async function runUtilityMonitor() {
-  const btn = document.getElementById("monitorNowBtn");
-  btn.disabled = true;
-  btn.textContent = "확인 중...";
-
-  try {
-    const response = await chrome.runtime.sendMessage({ type: "RUN_UTILITY_MONITOR" });
-    if (!response.success) {
-      throw new Error(response.error || "확인 실패");
-    }
-
-    const summary = response.summary || {};
-    btn.textContent = summary.errors && summary.errors.length
-      ? "오류 있음"
-      : `알림 ${summary.notifications || 0}건`;
-    loadActivity();
-  } catch (error) {
-    btn.textContent = "실패";
-  } finally {
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = "지금 확인";
-    }, 1600);
-  }
-}
-
-function goToLogin() {
-  openGgmPage("/user/login");
-  window.close();
-}
-
-function goToSettings() {
-  window.location.href = "settings.html";
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2000);
 }
 
 async function openGgmPage(url) {
   await chrome.runtime.sendMessage({ type: "OPEN_GGM_PAGE", url });
 }
 
-function initTabs() {
-  const tabBtns = document.querySelectorAll(".tab-btn");
-  const tabContents = document.querySelectorAll(".tab-content");
-
-  tabBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tabId = btn.dataset.tab;
-
-      tabBtns.forEach((button) => button.classList.remove("active"));
-      btn.classList.add("active");
-
-      tabContents.forEach((content) => content.classList.remove("active"));
-      document.getElementById(`tab-${tabId}`).classList.add("active");
-
-      chrome.storage.local.set({ lastTab: tabId });
-    });
-  });
-
-  chrome.storage.local.get(["lastTab"], (result) => {
-    if (result.lastTab) {
-      const savedTabBtn = document.querySelector(`[data-tab="${result.lastTab}"]`);
-      if (savedTabBtn) savedTabBtn.click();
-    }
-  });
+function getQuickLink(id) {
+  return QUICK_LINKS.find((link) => link.id === id);
 }
 
-function initLauncher() {
-  document.querySelectorAll("[data-url]").forEach((button) => {
+function getFeature(id) {
+  return FEATURES.find((feature) => feature.id === id);
+}
+
+function createActionButton({ label, detail, tone = "", onClick }) {
+  const button = document.createElement("button");
+  button.className = `action-btn ${tone}`.trim();
+  const labelNode = document.createElement("span");
+  labelNode.className = "action-label";
+  labelNode.textContent = label;
+  const detailNode = document.createElement("span");
+  detailNode.className = "action-detail";
+  detailNode.textContent = detail;
+  button.append(labelNode, detailNode);
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+async function runAttendance(button) {
+  button.disabled = true;
+  button.querySelector(".action-label").textContent = "출석 처리 중...";
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "MANUAL_ATTENDANCE" });
+    showToast(response.success ? "출석체크 완료" : "출석체크 실패");
+    await loadHome();
+  } catch (error) {
+    showToast("출석체크 중 오류가 발생했습니다");
+    button.disabled = false;
+  }
+}
+
+function renderActions(status, drafts) {
+  const list = document.getElementById("actionList");
+  const badge = document.getElementById("todayStatusBadge");
+  list.replaceChildren();
+
+  if (!status.hasToken) {
+    badge.textContent = "로그인 필요";
+    badge.className = "badge error";
+    list.appendChild(createActionButton({
+      label: "GGM 로그인",
+      detail: "로그인 후 출석과 알림을 사용할 수 있습니다",
+      tone: "red",
+      onClick: () => openGgmPage("/user/login"),
+    }));
+    return;
+  }
+
+  if (!status.todayChecked) {
+    badge.textContent = "출석 필요";
+    badge.className = "badge pending";
+    list.appendChild(createActionButton({
+      label: "출석체크 실행",
+      detail: "오늘 보상을 바로 받습니다",
+      onClick: (event) => runAttendance(event.currentTarget),
+    }));
+  } else {
+    badge.textContent = "출석 완료";
+    badge.className = "badge success";
+  }
+
+  const draftCount = (drafts.items || []).length;
+  if (draftCount > 0) {
+    list.appendChild(createActionButton({
+      label: `임시저장 ${draftCount}개`,
+      detail: "작성 중이던 내용을 확인합니다",
+      tone: "purple",
+      onClick: () => { window.location.href = "drafts-settings.html"; },
+    }));
+  }
+
+  if (!list.children.length) {
+    list.appendChild(createActionButton({
+      label: "GGM Town 열기",
+      detail: "지금 처리할 작업이 없습니다",
+      tone: "green",
+      onClick: () => openGgmPage("/town"),
+    }));
+  }
+}
+
+function renderQuickLinks(settings) {
+  const grid = document.getElementById("favoriteQuickGrid");
+  const selected = settings.favoriteQuickLinks || ["freeboard", "quest", "market", "shop"];
+  const links = selected.map(getQuickLink).filter(Boolean);
+  grid.replaceChildren();
+
+  if (!links.length) {
+    const empty = document.createElement("button");
+    empty.className = "quick-btn";
+    empty.innerHTML = `<span class="quick-icon">＋</span>추가`;
+    empty.addEventListener("click", () => {
+      window.location.href = "home-settings.html";
+    });
+    grid.appendChild(empty);
+    return;
+  }
+
+  links.forEach((link) => {
+    const button = document.createElement("button");
+    button.className = "quick-btn";
+    button.dataset.url = link.url;
+    button.innerHTML = `<span class="quick-icon ${link.tone}">${link.icon}</span>${link.label}`;
     button.addEventListener("click", async () => {
-      await openGgmPage(button.dataset.url);
+      await openGgmPage(link.url);
       window.close();
     });
+    grid.appendChild(button);
   });
 }
 
-document.getElementById("checkBtn").addEventListener("click", manualCheck);
-document.getElementById("loginBtn").addEventListener("click", goToLogin);
-document.getElementById("settingsBtn").addEventListener("click", goToSettings);
-document.getElementById("alertSettingsBtn").addEventListener("click", goToSettings);
-document.getElementById("monitorNowBtn").addEventListener("click", runUtilityMonitor);
+function renderFeatures(settings) {
+  const container = document.getElementById("homeFeatures");
+  const order = settings.homeFeatureOrder || FEATURES.map((feature) => feature.id);
+  const hidden = new Set(settings.hiddenHomeFeatures || []);
+  const visible = order.map(getFeature).filter((feature) => feature && !hidden.has(feature.id));
+  container.replaceChildren();
 
-initTabs();
-initLauncher();
-updateStatus();
-updateFeatureSummary();
-loadActivity();
+  if (!visible.length) {
+    const empty = document.createElement("section");
+    empty.className = "card";
+    empty.innerHTML = `<div class="empty-state">보이는 도구가 없습니다. 메인 편집에서 다시 추가할 수 있습니다.</div>`;
+    container.appendChild(empty);
+    return;
+  }
+
+  visible.forEach((feature) => {
+    const button = document.createElement("button");
+    button.className = "tool-card";
+    button.innerHTML = `
+      <span class="feature-icon ${feature.tone}">${feature.icon}</span>
+      <span class="tool-copy">
+        <span class="feature-title">${feature.title}</span>
+        <span class="feature-desc">${feature.desc}</span>
+      </span>
+      <span class="tool-arrow">›</span>
+    `;
+    button.addEventListener("click", () => {
+      window.location.href = feature.page;
+    });
+    container.appendChild(button);
+  });
+}
+
+async function loadHome() {
+  try {
+    const [status, settings, drafts] = await Promise.all([
+      chrome.runtime.sendMessage({ type: "GET_STATUS" }),
+      chrome.runtime.sendMessage({ type: "GET_FEATURE_SETTINGS" }),
+      chrome.runtime.sendMessage({ type: "GET_DRAFTS" }),
+    ]);
+
+    renderActions(status, drafts);
+    renderQuickLinks(settings);
+    renderFeatures(settings);
+  } catch (error) {
+    console.error("홈 조회 실패:", error);
+  }
+}
+
+document.getElementById("settingsBtn").addEventListener("click", () => {
+  window.location.href = "settings.html";
+});
+
+document.getElementById("editHomeBtn").addEventListener("click", () => {
+  window.location.href = "home-settings.html";
+});
+
+document.getElementById("editToolsBtn").addEventListener("click", () => {
+  window.location.href = "home-settings.html";
+});
+
+document.getElementById("allLinksBtn").addEventListener("click", () => {
+  window.location.href = "launcher.html";
+});
+
+loadHome();

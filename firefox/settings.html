@@ -2,564 +2,101 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      width: 430px;
-      max-height: 680px;
-      overflow-y: auto;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #ffffff;
-      color: #202124;
-    }
-
-    .top-line {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 30px;
-      padding: 0 14px;
-      border-bottom: 1px solid #e4e7ee;
-      color: #535b66;
-      font-size: 11px;
-    }
-
-    .top-line strong {
-      color: #222;
-      font-weight: 700;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 15px 16px;
-      border-bottom: 1px solid #e4e7ee;
-    }
-
-    .header h1 {
-      color: #06f;
-      font-size: 18px;
-      font-weight: 900;
-      letter-spacing: 0;
-    }
-
-    .header h1::after {
-      display: block;
-      width: 78px;
-      height: 3px;
-      margin-top: 5px;
-      background: #8ca0e3;
-      content: "";
-    }
-
-    .back-btn {
-      min-height: 32px;
-      padding: 0 11px;
-      border: 1px solid #bfcdf7;
-      border-radius: 5px;
-      background: #eef3ff;
-      color: #2455d6;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .page {
-      padding: 16px;
-    }
-
-    .section {
-      overflow: hidden;
-      margin-bottom: 14px;
-      border: 1px solid #d9dde7;
-      border-radius: 7px;
-      background: #ffffff;
-      box-shadow: 0 2px 5px rgba(24, 39, 75, 0.08);
-    }
-
-    .section-title {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 38px;
-      padding: 9px 12px;
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 900;
-      letter-spacing: 0;
-    }
-
-    .section-title.blue {
-      background: #4667dc;
-    }
-
-    .section-title.green {
-      background: linear-gradient(90deg, #078159, #0c9a68);
-    }
-
-    .section-title.orange {
-      background: linear-gradient(90deg, #a94b0c, #d27300);
-    }
-
-    .section-title.purple {
-      background: linear-gradient(90deg, #6026bd, #7c35e6);
-    }
-
-    .section-body {
-      padding: 12px;
-    }
-
-    .setting-row {
-      display: grid;
-      grid-template-columns: 126px minmax(0, 1fr);
-      align-items: center;
-      min-height: 38px;
-      border-bottom: 1px dashed #e1e5ec;
-      font-size: 13px;
-      gap: 10px;
-    }
-
-    .setting-row:last-child {
-      border-bottom: 0;
-    }
-
-    .setting-label {
-      color: #5f6875;
-      font-weight: 800;
-    }
-
-    .status-value {
-      color: #1f2937;
-      font-size: 13px;
-      font-weight: 800;
-      text-align: right;
-      word-break: keep-all;
-    }
-
-    .status-value.success {
-      color: #0a8f58;
-    }
-
-    .status-value.error {
-      color: #d93a31;
-    }
-
-    .status-value.pending {
-      color: #b46a00;
-    }
-
-    .input-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .field {
-      margin-bottom: 10px;
-    }
-
-    .field label,
-    .check-row span {
-      display: block;
-      margin-bottom: 5px;
-      color: #5f6875;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .setting-input {
-      width: 100%;
-      height: 36px;
-      padding: 0 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 5px;
-      background: #fbfcff;
-      color: #202124;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .setting-input:focus {
-      border-color: #4667dc;
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(70, 103, 220, 0.14);
-    }
-
-    .check-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .check-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      min-height: 36px;
-      padding: 0 9px;
-      border: 1px solid #d9dde7;
-      border-radius: 5px;
-      background: #fbfcff;
-      color: #344054;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .check-row span {
-      margin: 0;
-    }
-
-    .check-row input {
-      width: 16px;
-      height: 16px;
-    }
-
-    .hint {
-      margin-top: 8px;
-      color: #7a8391;
-      font-size: 11px;
-      line-height: 1.5;
-    }
-
-    .log-container,
-    .activity-container {
-      max-height: 190px;
-      overflow-y: auto;
-      border: 1px solid #e1e5ec;
-      border-radius: 6px;
-      background: #fbfcff;
-      font-size: 12px;
-    }
-
-    .log-entry {
-      display: grid;
-      grid-template-columns: 70px minmax(0, 1fr);
-      gap: 7px;
-      align-items: center;
-      min-height: 38px;
-      padding: 8px 10px;
-      border-bottom: 1px solid #edf0f6;
-      cursor: pointer;
-    }
-
-    .log-entry:last-child {
-      border-bottom: 0;
-    }
-
-    .log-entry:hover {
-      background: #f3f7ff;
-    }
-
-    .log-time {
-      color: #8a94a6;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .log-message {
-      overflow: hidden;
-      color: #344054;
-      font-weight: 700;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .log-success .log-message {
-      color: #0a8f58;
-    }
-
-    .log-error .log-message {
-      color: #d93a31;
-    }
-
-    .log-info {
-      display: block;
-      min-height: 38px;
-      padding: 11px 10px;
-      color: #7a8391;
-      cursor: default;
-    }
-
-    .btn {
-      min-height: 36px;
-      padding: 0 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 900;
-      letter-spacing: 0;
-      transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
-    }
-
-    .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 5px rgba(24, 39, 75, 0.14);
-    }
-
-    .btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-      transform: none;
-      box-shadow: none;
-    }
-
-    .btn-primary {
-      width: 100%;
-      border: 0;
-      background: #4667dc;
-      color: #ffffff;
-    }
-
-    .btn-secondary {
-      border: 1px solid #bfcdf7;
-      background: #eef3ff;
-      color: #2455d6;
-    }
-
-    .btn-danger {
-      border: 0;
-      background: #df3e36;
-      color: #ffffff;
-    }
-
-    .btn-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .toast {
-      position: fixed;
-      right: 16px;
-      bottom: 16px;
-      max-width: 330px;
-      padding: 10px 13px;
-      border-radius: 5px;
-      background: #202124;
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: 800;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-      transform: translateY(8px);
-      z-index: 200;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      background: rgba(15, 23, 42, 0.48);
-      z-index: 100;
-    }
-
-    .modal-overlay.show {
-      display: flex;
-    }
-
-    .modal {
-      width: 100%;
-      max-width: 360px;
-      overflow: hidden;
-      border-radius: 7px;
-      background: #ffffff;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.24);
-    }
-
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 40px;
-      padding: 9px 12px;
-      background: #4667dc;
-      color: #ffffff;
-    }
-
-    .modal-title {
-      font-size: 13px;
-      font-weight: 900;
-    }
-
-    .modal-close {
-      width: 26px;
-      height: 26px;
-      border: 0;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.18);
-      color: #ffffff;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 900;
-    }
-
-    .modal-content {
-      max-height: 280px;
-      overflow-y: auto;
-      padding: 12px;
-      color: #344054;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 12px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-  </style>
+  <link rel="stylesheet" href="ui.css">
 </head>
 <body>
-  <div class="top-line">
-    <span>GGMPlus 설정</span>
-    <strong>GGMPlus</strong>
+  <div class="app">
+    <header class="page-head">
+      <div class="page-top">
+        <button class="back-btn" id="backBtn">← 홈</button>
+      </div>
+      <h1 class="page-title">전체 설정</h1>
+      <p class="page-subtitle">토큰, 공통 로그, 전체 초기화처럼 모든 기능에 걸친 항목만 관리합니다.</p>
+    </header>
+    <main class="page">
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark blue">계</span>
+            <div>
+              <div class="card-title">계정/토큰 상태</div>
+              <div class="card-subtitle">GGM 로그인 토큰 수집 상태입니다.</div>
+            </div>
+          </div>
+          <span id="tokenBadge" class="badge pending">확인 중</span>
+        </div>
+        <div class="card-body">
+          <div class="metric-grid">
+            <div class="metric">
+              <span class="metric-label">로그인</span>
+              <span id="loginStatus" class="metric-value pending">확인 중...</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">사용자</span>
+              <span id="userName" class="metric-value">-</span>
+            </div>
+          </div>
+          <button id="loginBtn" class="btn btn-secondary" style="display:none;width:100%;margin-top:10px;">로그인하러 가기</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark green">기</span>
+            <div>
+              <div class="card-title">공통 활동 기록</div>
+              <div class="card-subtitle">확장 프로그램 전체 작업 기록입니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="list" id="activityContainer">
+            <div class="empty-state">기록을 불러오는 중...</div>
+          </div>
+          <div class="btn-row">
+            <button id="refreshActivityBtn" class="btn btn-secondary">새로고침</button>
+            <button id="clearActivityBtn" class="btn btn-secondary">기록 삭제</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark orange">데</span>
+            <div>
+              <div class="card-title">공통 데이터 관리</div>
+              <div class="card-subtitle">기능별 삭제는 각 기능 설정에서도 할 수 있습니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="btn-row">
+            <button id="clearLogsBtn" class="btn btn-secondary">출석 로그 삭제</button>
+            <button id="clearDraftsBtn" class="btn btn-secondary">임시저장 삭제</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark red">초</span>
+            <div>
+              <div class="card-title">전체 초기화</div>
+              <div class="card-subtitle">토큰, 로그, 설정, 임시저장을 모두 지웁니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <button id="resetAllBtn" class="btn btn-danger" style="width:100%;">전체 초기화</button>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <header class="header">
-    <h1>설정</h1>
-    <button class="back-btn" id="backBtn">돌아가기</button>
-  </header>
-
-  <main class="page">
-    <section class="section">
-      <div class="section-title blue">자동 출석체크</div>
-      <div class="section-body">
-        <div class="setting-row">
-          <span class="setting-label">오늘 출석</span>
-          <span id="todayStatus" class="status-value pending">확인 중...</span>
-        </div>
-        <div class="setting-row">
-          <span class="setting-label">다음 실행</span>
-          <span id="nextCheckTime" class="status-value">확인 중...</span>
-        </div>
-        <button class="btn btn-primary" id="manualCheckBtn">지금 출석체크</button>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title purple">출석 알람 설정</div>
-      <div class="section-body">
-        <div class="input-grid">
-          <div class="field">
-            <label for="delayInput">첫 실행 대기(분)</label>
-            <input class="setting-input" id="delayInput" type="number" min="1" max="1440" step="1">
-          </div>
-          <div class="field">
-            <label for="periodInput">반복 간격(분)</label>
-            <input class="setting-input" id="periodInput" type="number" min="1" max="10080" step="1">
-          </div>
-        </div>
-        <button class="btn btn-primary" id="saveSettingsBtn">출석 알람 저장</button>
-        <p class="hint">자정 알람은 별도로 유지되고, 이 알람은 브라우저가 켜져 있을 때 보조로 출석 상태를 확인합니다.</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title orange">관심 알림 설정</div>
-      <div class="section-body">
-        <div class="check-grid">
-          <label class="check-row">
-            <input id="notifyNewPostsInput" type="checkbox">
-            <span>새 글</span>
-          </label>
-          <label class="check-row">
-            <input id="notifyGoldboxQuestInput" type="checkbox">
-            <span>퀘스트</span>
-          </label>
-          <label class="check-row">
-            <input id="notifyStockWatchInput" type="checkbox">
-            <span>주식</span>
-          </label>
-        </div>
-
-        <div class="field">
-          <label for="utilityIntervalInput">관심 알림 확인 간격(분)</label>
-          <input class="setting-input" id="utilityIntervalInput" type="number" min="5" max="1440" step="1">
-        </div>
-        <div class="field">
-          <label for="boardCategoriesInput">게시판 카테고리</label>
-          <input class="setting-input" id="boardCategoriesInput" type="text" placeholder="free, dev">
-        </div>
-        <div class="field">
-          <label for="circlePostIdsInput">동아리 게시글 관심 ID</label>
-          <input class="setting-input" id="circlePostIdsInput" type="text" placeholder="1, 2, 3">
-        </div>
-        <div class="field">
-          <label for="stockWatchIdsInput">주식 관심 동아리 ID</label>
-          <input class="setting-input" id="stockWatchIdsInput" type="text" placeholder="1, 2, 3">
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-primary" id="saveFeatureSettingsBtn">관심 알림 저장</button>
-          <button class="btn btn-secondary" id="runMonitorBtn">지금 확인</button>
-        </div>
-        <p class="hint">새 글과 주식은 첫 확인에서 기준값을 잡고, 이후 변화부터 알림을 보냅니다.</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title green">글/댓글 임시저장</div>
-      <div class="section-body">
-        <div class="setting-row">
-          <span class="setting-label">상태</span>
-          <span class="status-value success">자동 저장 중</span>
-        </div>
-        <button class="btn btn-secondary" id="clearDraftsBtn" style="width: 100%; margin-top: 10px;">임시저장 데이터 삭제</button>
-        <p class="hint">글쓰기와 댓글 입력 중 새로고침해도 복구할 수 있도록 브라우저 로컬 저장소에만 보관합니다.</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title green">활동 타임라인</div>
-      <div class="section-body">
-        <div class="activity-container" id="activityContainer">
-          <div class="log-entry log-info">활동 기록을 불러오는 중...</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" id="refreshActivityBtn">새로고침</button>
-          <button class="btn btn-secondary" id="clearActivityBtn">기록 삭제</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title green">출석체크 로그</div>
-      <div class="section-body">
-        <div class="log-container" id="logContainer">
-          <div class="log-entry log-info">로그를 불러오는 중...</div>
-        </div>
-        <button class="btn btn-secondary" id="refreshLogBtn" style="width: 100%; margin-top: 10px;">새로고침</button>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-title orange">데이터 관리</div>
-      <div class="section-body">
-        <div class="btn-row">
-          <button class="btn btn-secondary" id="clearLogsBtn">출석 로그 삭제</button>
-          <button class="btn btn-danger" id="resetAllBtn">전체 초기화</button>
-        </div>
-      </div>
-    </section>
-  </main>
-
   <div class="toast" id="toast"></div>
-
-  <div class="modal-overlay" id="logModal">
+  <div class="modal-overlay" id="detailModal">
     <div class="modal">
       <div class="modal-header">
         <span class="modal-title" id="modalTitle">상세</span>
@@ -568,7 +105,6 @@
       <div class="modal-content" id="modalContent"></div>
     </div>
   </div>
-
   <script src="settings.js"></script>
 </body>
 </html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div class="app">
+    <header class="page-head">
+      <div class="page-top">
+        <button class="back-btn" id="backBtn">← 홈</button>
+        <div class="top-actions">
+          <button class="back-btn" id="featureSettingsBtn">런처 설정</button>
+          <button class="icon-btn" id="settingsBtn" title="전체 설정">⚙</button>
+        </div>
+      </div>
+      <h1 class="page-title">빠른 이동</h1>
+      <p class="page-subtitle">자주 쓰는 GGM Town 화면을 새 탭으로 바로 엽니다.</p>
+    </header>
+    <main class="page">
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark green">이</span>
+            <div>
+              <div class="card-title">GGM Town</div>
+              <div class="card-subtitle">커뮤니티와 활동 페이지</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="quick-grid">
+            <button class="quick-btn" data-url="/town"><span class="quick-icon">홈</span>타운</button>
+            <button class="quick-btn" data-url="/town/freeboard"><span class="quick-icon">게</span>게시판</button>
+            <button class="quick-btn" data-url="/town/quest"><span class="quick-icon green">퀘</span>퀘스트</button>
+            <button class="quick-btn" data-url="/town/shop/sticker"><span class="quick-icon orange">상</span>상점</button>
+            <button class="quick-btn" data-url="/town/market"><span class="quick-icon purple">주</span>주식</button>
+            <button class="quick-btn" data-url="/user"><span class="quick-icon green">나</span>내 정보</button>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark blue">학</span>
+            <div>
+              <div class="card-title">학교 포트폴리오</div>
+              <div class="card-subtitle">작품과 프로젝트 페이지</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="quick-grid">
+            <button class="quick-btn" data-url="/circle"><span class="quick-icon">동</span>동아리</button>
+            <button class="quick-btn" data-url="/project"><span class="quick-icon green">프</span>프로젝트</button>
+            <button class="quick-btn" data-url="/graduate"><span class="quick-icon orange">졸</span>졸업작품</button>
+            <button class="quick-btn" data-url="/evaluation"><span class="quick-icon purple">평</span>평가</button>
+            <button class="quick-btn" data-url="/portfolio"><span class="quick-icon">포</span>포트폴리오</button>
+            <button class="quick-btn" data-url="/main"><span class="quick-icon green">메</span>메인</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="launcher.js"></script>
+</body>
+</html>

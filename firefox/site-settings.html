@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div class="app">
+    <header class="page-head">
+      <div class="page-top">
+        <button class="back-btn" id="backBtn">← 화면 보조</button>
+        <button class="icon-btn" id="globalSettingsBtn" title="전체 설정">⚙</button>
+      </div>
+      <h1 class="page-title">화면 보조 설정</h1>
+      <p class="page-subtitle">사이트 화면에 직접 반영되는 기능의 ON/OFF와 데이터를 관리합니다.</p>
+    </header>
+    <main class="page">
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark green">기</span>
+            <div>
+              <div class="card-title">기능 ON/OFF</div>
+              <div class="card-subtitle">GGM Town 화면에 적용할 보조 기능을 선택합니다.</div>
+            </div>
+          </div>
+          <span id="featureBadge" class="badge pending">확인 중</span>
+        </div>
+        <div class="card-body">
+          <div class="toggle-grid single">
+            <label class="toggle-card">
+              <input type="checkbox" id="showFloatingPanelToggle">
+              <span class="toggle-visual"></span>
+              <span class="toggle-name">사이트 오른쪽 아래 GGMPlus 버튼 표시</span>
+            </label>
+            <label class="toggle-card">
+              <input type="checkbox" id="markReadPostsToggle">
+              <span class="toggle-visual"></span>
+              <span class="toggle-name">읽은 자유게시판 글 회색 표시</span>
+            </label>
+          </div>
+          <button id="saveBtn" class="btn btn-primary" style="width:100%;">저장</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark teal">읽</span>
+            <div>
+              <div class="card-title">읽음 기록</div>
+              <div class="card-subtitle">목록에서 회색으로 표시할 글 기록입니다.</div>
+            </div>
+          </div>
+          <span id="readPostCountBadge" class="badge">확인 중</span>
+        </div>
+        <div class="card-body">
+          <div class="list" id="readPostList">
+            <div class="empty-state">읽음 기록을 불러오는 중...</div>
+          </div>
+          <button id="clearReadPostsBtn" class="btn btn-secondary" style="width:100%;margin-top:10px;">읽음 기록 삭제</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="site-settings.js"></script>
+</body>
+</html>

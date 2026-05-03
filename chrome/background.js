@@ -26,9 +26,26 @@ const DEFAULT_ALARM_CONFIG = {
 
 const UTILITY_MONITOR_ALARM_NAME = "utilityMonitorAlarm";
 const MAX_ACTIVITY_ITEMS = 120;
+const HOME_FEATURE_IDS = ["attendance", "launcher", "alerts", "drafts", "site", "settings"];
+const QUICK_LINK_IDS = [
+  "freeboard",
+  "quest",
+  "market",
+  "shop",
+  "circle",
+  "project",
+  "graduate",
+  "portfolio",
+  "user",
+];
 
 const DEFAULT_FEATURE_SETTINGS = {
   utilityMonitorIntervalMinutes: 15,
+  markReadPosts: true,
+  showFloatingPanel: true,
+  homeFeatureOrder: HOME_FEATURE_IDS,
+  hiddenHomeFeatures: [],
+  favoriteQuickLinks: ["freeboard", "quest", "market", "shop"],
   notifyNewPosts: true,
   notifyGoldboxQuest: true,
   notifyStockWatch: true,
@@ -94,6 +111,16 @@ function parseNumberList(value) {
   return [];
 }
 
+function normalizeStringList(value, allowedValues, fallback = []) {
+  const source = Array.isArray(value) ? value : String(value || "").split(/[\s,]+/);
+  const allowed = new Set(allowedValues);
+  const cleaned = source
+    .map((item) => String(item || "").trim())
+    .filter((item) => allowed.has(item));
+  const unique = [...new Set(cleaned)];
+  return unique.length ? unique : fallback;
+}
+
 function normalizeBoardCategories(value) {
   const categories = Array.isArray(value) ? value : String(value || "").split(/[\s,]+/);
   const cleaned = categories
@@ -112,6 +139,18 @@ function normalizeFeatureSettings(raw = {}) {
         10,
       ) || DEFAULT_FEATURE_SETTINGS.utilityMonitorIntervalMinutes,
     ),
+    markReadPosts: raw.markReadPosts !== false,
+    showFloatingPanel: raw.showFloatingPanel !== false,
+    homeFeatureOrder: [
+      ...normalizeStringList(raw.homeFeatureOrder, HOME_FEATURE_IDS, HOME_FEATURE_IDS),
+      ...HOME_FEATURE_IDS,
+    ].filter((item, index, list) => list.indexOf(item) === index),
+    hiddenHomeFeatures: normalizeStringList(raw.hiddenHomeFeatures, HOME_FEATURE_IDS, []),
+    favoriteQuickLinks: normalizeStringList(
+      raw.favoriteQuickLinks,
+      QUICK_LINK_IDS,
+      DEFAULT_FEATURE_SETTINGS.favoriteQuickLinks,
+    ).slice(0, 6),
     notifyNewPosts: raw.notifyNewPosts !== false,
     notifyGoldboxQuest: raw.notifyGoldboxQuest !== false,
     notifyStockWatch: raw.notifyStockWatch !== false,
@@ -1180,6 +1219,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "OPEN_EXTENSION_PAGE") {
+    const page = String(message.page || "popup.html").replace(/^\/+/, "");
+    if (!/^[a-z0-9-]+\.html$/i.test(page)) {
+      sendResponse({ success: false, error: "잘못된 페이지입니다." });
+      return true;
+    }
+    chrome.tabs.create({ url: chrome.runtime.getURL(page) }).then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
   // 활동 타임라인 조회
   if (message.type === "GET_ACTIVITY") {
     chrome.storage.local.get(["activityTimeline"]).then((data) => {
@@ -1197,8 +1250,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // 글/댓글 임시저장 데이터 삭제
+  if (message.type === "GET_DRAFTS") {
+    chrome.storage.local.get(["ggmDrafts"]).then((data) => {
+      const drafts = data.ggmDrafts || {};
+      sendResponse({
+        items: Object.entries(drafts).map(([key, draft]) => ({
+          key,
+          preview: draft.preview || "",
+          path: draft.path || "",
+          updatedAt: draft.updatedAt || null,
+        })),
+      });
+    });
+    return true;
+  }
+
+  // 글/댓글 임시저장 데이터 삭제
   if (message.type === "CLEAR_DRAFTS") {
     chrome.storage.local.remove(["ggmDrafts"]).then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  if (message.type === "GET_READ_POSTS") {
+    chrome.storage.local.get(["ggmReadPosts"]).then((data) => {
+      const readPosts = data.ggmReadPosts || {};
+      sendResponse({
+        items: Object.entries(readPosts).map(([key, item]) => ({
+          key,
+          title: item.title || "",
+          path: item.path || key,
+          readAt: item.readAt || null,
+        })),
+      });
+    });
+    return true;
+  }
+
+  if (message.type === "CLEAR_READ_POSTS") {
+    chrome.storage.local.remove(["ggmReadPosts"]).then(() => {
       sendResponse({ success: true });
     });
     return true;

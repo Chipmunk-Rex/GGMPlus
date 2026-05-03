@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div class="app">
+    <header class="page-head">
+      <div class="page-top">
+        <button class="back-btn" id="backBtn">← 출석</button>
+        <button class="icon-btn" id="globalSettingsBtn" title="전체 설정">⚙</button>
+      </div>
+      <h1 class="page-title">출석 설정</h1>
+      <p class="page-subtitle">자동 출석 확인 주기와 출석 로그를 관리합니다.</p>
+    </header>
+    <main class="page">
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark green">주</span>
+            <div>
+              <div class="card-title">자동 실행 주기</div>
+              <div class="card-subtitle">자정 알람과 별개로 보조 확인 주기를 설정합니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="metric" style="margin-bottom:10px;">
+            <span class="metric-label">다음 실행 안내</span>
+            <span id="nextCheckTime" class="metric-value">확인 중...</span>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="delayInput">첫 실행 대기(분)</label>
+              <input class="setting-input" id="delayInput" type="number" min="1" max="1440" step="1">
+            </div>
+            <div class="field">
+              <label for="periodInput">반복 간격(분)</label>
+              <input class="setting-input" id="periodInput" type="number" min="1" max="10080" step="1">
+            </div>
+          </div>
+          <button id="saveSettingsBtn" class="btn btn-primary" style="width:100%;">출석 알람 저장</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark orange">로</span>
+            <div>
+              <div class="card-title">출석 로그</div>
+              <div class="card-subtitle">최근 출석 요청 결과입니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="list" id="logContainer">
+            <div class="empty-state">로그를 불러오는 중...</div>
+          </div>
+          <div class="btn-row">
+            <button id="refreshLogBtn" class="btn btn-secondary">새로고침</button>
+            <button id="clearLogsBtn" class="btn btn-secondary">로그 삭제</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal-overlay" id="logModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">상세</span>
+        <button class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+  <script src="attendance-settings.js"></script>
+</body>
+</html>
