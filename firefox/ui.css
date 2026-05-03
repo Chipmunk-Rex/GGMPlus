@@ -357,6 +357,14 @@ input {
   font-weight: 700;
 }
 
+.section-head .mini-link {
+  min-height: 32px;
+  padding: 0 12px;
+  border-color: #9eb3ef;
+  background: #eef3ff;
+  box-shadow: 0 6px 14px rgba(52, 91, 218, 0.10);
+}
+
 .tool-list {
   display: grid;
   gap: 9px;
