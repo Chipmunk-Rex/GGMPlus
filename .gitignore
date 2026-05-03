@@ -1,3 +1,6 @@
 # Codex-generated scratch files
 .codex_*
 .CODEX*
+
+# Extension package outputs
+*.zip

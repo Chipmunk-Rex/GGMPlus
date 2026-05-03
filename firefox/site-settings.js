@@ -1,5 +1,3 @@
-let currentSettings = {};
-
 function showToast(message) {
   const toast = document.getElementById("toast");
   toast.textContent = message;
@@ -33,25 +31,6 @@ function createReadPostItem(item) {
   return entry;
 }
 
-async function loadSettings() {
-  currentSettings = await chrome.runtime.sendMessage({ type: "GET_FEATURE_SETTINGS" });
-  document.getElementById("showFloatingPanelToggle").checked = currentSettings.showFloatingPanel !== false;
-  document.getElementById("markReadPostsToggle").checked = currentSettings.markReadPosts !== false;
-
-  const badge = document.getElementById("featureBadge");
-  const enabledCount = [
-    currentSettings.showFloatingPanel !== false,
-    currentSettings.markReadPosts !== false,
-  ].filter(Boolean).length;
-  if (enabledCount) {
-    badge.textContent = `${enabledCount}개 켜짐`;
-    badge.className = "badge success";
-  } else {
-    badge.textContent = "꺼짐";
-    badge.className = "badge";
-  }
-}
-
 async function loadReadPosts() {
   const badge = document.getElementById("readPostCountBadge");
   const list = document.getElementById("readPostList");
@@ -73,28 +52,6 @@ async function loadReadPosts() {
   }
 }
 
-async function saveSettings() {
-  const showFloatingPanel = document.getElementById("showFloatingPanelToggle").checked;
-  const markReadPosts = document.getElementById("markReadPostsToggle").checked;
-  const response = await chrome.runtime.sendMessage({
-    type: "SAVE_FEATURE_SETTINGS",
-    data: {
-      ...currentSettings,
-      showFloatingPanel,
-      markReadPosts,
-    },
-  });
-
-  if (!response.success) {
-    showToast(response.error || "설정을 저장하지 못했습니다");
-    return;
-  }
-
-  currentSettings = response.settings;
-  showToast("화면 보조 설정을 저장했습니다");
-  loadSettings();
-}
-
 async function clearReadPosts() {
   if (!confirm("자유게시판 읽음 기록을 모두 삭제하시겠습니까?")) return;
   await chrome.runtime.sendMessage({ type: "CLEAR_READ_POSTS" });
@@ -104,10 +61,6 @@ async function clearReadPosts() {
 
 document.getElementById("backBtn").addEventListener("click", () => { window.location.href = "site.html"; });
 document.getElementById("globalSettingsBtn").addEventListener("click", () => { window.location.href = "settings.html"; });
-document.getElementById("saveBtn").addEventListener("click", saveSettings);
 document.getElementById("clearReadPostsBtn").addEventListener("click", clearReadPosts);
 
-loadSettings().catch((error) => {
-  console.error("화면 보조 설정 조회 실패:", error);
-});
 loadReadPosts();

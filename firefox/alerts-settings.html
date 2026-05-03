@@ -14,7 +14,7 @@
       <h1 class="page-title">알림 설정</h1>
       <p class="page-subtitle">관심 알림 대상, 확인 간격, 최근 알림 기록을 관리합니다.</p>
     </header>
-    <main class="page">
+    <main class="page with-sticky-actions">
       <section class="card">
         <div class="card-header">
           <div class="title-group">
@@ -61,10 +61,6 @@
               <input class="setting-input" id="stockWatchIdsInput" type="text" placeholder="1, 2, 3">
             </div>
           </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" id="saveFeatureSettingsBtn">알림 저장</button>
-            <button class="btn btn-secondary" id="runMonitorBtn">지금 확인</button>
-          </div>
         </div>
       </section>
       <section class="card">
@@ -83,6 +79,10 @@
           </div>
         </div>
       </section>
+      <div class="sticky-actions two">
+        <button class="btn btn-primary" id="saveFeatureSettingsBtn">알림 저장</button>
+        <button class="btn btn-secondary" id="runMonitorBtn">지금 확인</button>
+      </div>
     </main>
   </div>
   <div class="toast" id="toast"></div>

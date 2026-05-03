@@ -14,6 +14,7 @@ const FEATURES = [
   { id: "attendance", title: "출석체크", desc: "출석 상태와 수동 실행" },
   { id: "launcher", title: "빠른 이동 전체", desc: "모든 바로가기 보기" },
   { id: "alerts", title: "관심 알림", desc: "새 글, 퀘스트, 주식 확인" },
+  { id: "automation", title: "자동 알림", desc: "시간, 조건, 행동 조합" },
   { id: "drafts", title: "임시저장", desc: "저장된 글과 댓글 관리" },
   { id: "site", title: "사이트 화면 보조", desc: "사이트 위 편의 기능" },
   { id: "settings", title: "전체 설정", desc: "토큰, 로그, 초기화" },
@@ -31,6 +32,24 @@ function showToast(message) {
 
 function getFeature(id) {
   return FEATURES.find((feature) => feature.id === id);
+}
+
+const FEATURE_ICON_META = {
+  attendance: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v3M16 3v3M5 9h14"/><rect x="4" y="5" width="16" height="15" rx="3"/><path d="m8 14 2.2 2.2L16 11"/></svg>', tone: "" },
+  launcher: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/><path d="M5 5h5M5 19h5"/></svg>', tone: "green" },
+  alerts: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>', tone: "orange" },
+  automation: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>', tone: "teal" },
+  drafts: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M8 12h8M8 16h6"/></svg>', tone: "purple" },
+  site: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M8 14h4M16 14h2"/></svg>', tone: "teal" },
+  settings: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .4 2l.1.1-2.8 2.8-.1-.1a1.8 1.8 0 0 0-2-.4 1.8 1.8 0 0 0-1 1.6v.2h-4V21a1.8 1.8 0 0 0-1-1.6 1.8 1.8 0 0 0-2 .4l-.1.1-2.8-2.8.1-.1a1.8 1.8 0 0 0 .4-2 1.8 1.8 0 0 0-1.6-1H3v-4h.2a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.4-2l-.1-.1 2.8-2.8.1.1a1.8 1.8 0 0 0 2 .4 1.8 1.8 0 0 0 1-1.6V3h4v.2a1.8 1.8 0 0 0 1 1.6 1.8 1.8 0 0 0 2-.4l.1-.1 2.8 2.8-.1.1a1.8 1.8 0 0 0-.4 2 1.8 1.8 0 0 0 1.6 1h.2v4h-.2a1.8 1.8 0 0 0-1.8 1Z"/></svg>', tone: "red" },
+};
+
+function createFeatureIcon(featureId) {
+  const meta = FEATURE_ICON_META[featureId] || FEATURE_ICON_META.settings;
+  const icon = document.createElement("span");
+  icon.className = `feature-icon ${meta.tone}`.trim();
+  icon.innerHTML = meta.icon;
+  return icon;
 }
 
 function moveFeature(id, direction) {
@@ -59,7 +78,7 @@ function renderFeatureManageList() {
     checkbox.dataset.featureToggle = feature.id;
     const copy = document.createElement("span");
     copy.innerHTML = `<strong>${feature.title}</strong><small>${feature.desc}</small>`;
-    label.append(checkbox, copy);
+    label.append(checkbox, createFeatureIcon(feature.id), copy);
 
     const actions = document.createElement("div");
     actions.className = "manage-actions";

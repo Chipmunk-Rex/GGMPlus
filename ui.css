@@ -404,6 +404,34 @@ input {
   margin-top: 10px;
 }
 
+.sticky-actions {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  width: 410px;
+  max-width: 100vw;
+  padding: 10px 12px 12px;
+  border-top: 1px solid #dfe5f0;
+  background: rgba(244, 247, 251, 0.96);
+  box-shadow: 0 -10px 24px rgba(24, 39, 75, 0.10);
+}
+
+.sticky-actions.two {
+  grid-template-columns: 1fr 1fr;
+}
+
+.sticky-actions .btn {
+  width: 100%;
+}
+
+.page.with-sticky-actions {
+  padding-bottom: 74px;
+}
+
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -439,6 +467,22 @@ input {
   color: #ffffff;
   font-size: 13px;
   font-weight: 900;
+  line-height: 1;
+}
+
+.feature-icon svg,
+.quick-icon svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.feature-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .feature-icon.green { background: #0a9a68; }
@@ -498,6 +542,17 @@ input {
   line-height: 22px;
   font-size: 11px;
   font-weight: 900;
+}
+
+.quick-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .quick-icon.green { background: #0a9a68; }
@@ -631,7 +686,7 @@ input {
   accent-color: #345bda;
 }
 
-.manage-check span {
+.manage-check > span:not(.feature-icon) {
   display: grid;
   min-width: 0;
   gap: 2px;
@@ -660,6 +715,96 @@ input {
 .manage-actions .mini-link {
   width: 28px;
   padding: 0;
+}
+
+.automation-editor-list {
+  display: grid;
+  gap: 10px;
+}
+
+.automation-rule-card {
+  display: grid;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #dfe5f0;
+  border-radius: 13px;
+  background: #fbfcff;
+}
+
+.automation-rule-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.automation-rule-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.automation-rule-title input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #345bda;
+}
+
+.automation-rule-grid {
+  display: grid;
+  grid-template-columns: 1fr 112px;
+  gap: 8px;
+}
+
+.day-row,
+.check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid #dfe5f0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #263247;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.chip-check input {
+  accent-color: #345bda;
+}
+
+.action-options {
+  display: grid;
+  gap: 8px;
+}
+
+.action-option-box {
+  display: none;
+  gap: 7px;
+  padding: 8px;
+  border: 1px dashed #c9d4ea;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.action-option-box.show {
+  display: grid;
+}
+
+.action-option-box textarea {
+  min-height: 64px;
+  padding: 9px 10px;
+  resize: vertical;
 }
 
 .hint {

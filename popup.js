@@ -1,21 +1,45 @@
 const QUICK_LINKS = [
-  { id: "freeboard", label: "자유게시판", icon: "게", url: "/town/freeboard", tone: "" },
-  { id: "quest", label: "퀘스트", icon: "퀘", url: "/town/quest", tone: "green" },
-  { id: "market", label: "주식", icon: "주", url: "/town/market", tone: "purple" },
-  { id: "shop", label: "상점", icon: "상", url: "/town/shop/sticker", tone: "orange" },
-  { id: "circle", label: "동아리", icon: "동", url: "/circle", tone: "" },
-  { id: "project", label: "프로젝트", icon: "프", url: "/project", tone: "green" },
-  { id: "graduate", label: "졸업작품", icon: "졸", url: "/graduate", tone: "orange" },
-  { id: "portfolio", label: "포트폴리오", icon: "포", url: "/portfolio", tone: "" },
-  { id: "user", label: "내 정보", icon: "나", url: "/user", tone: "green" },
+  { id: "freeboard", label: "자유게시판", icon: "freeboard", url: "/town/freeboard", tone: "" },
+  { id: "quest", label: "퀘스트", icon: "quest", url: "/town/quest", tone: "green" },
+  { id: "market", label: "주식", icon: "market", url: "/town/market", tone: "purple" },
+  { id: "shop", label: "상점", icon: "shop", url: "/town/shop/sticker", tone: "orange" },
+  { id: "circle", label: "동아리", icon: "circle", url: "/circle", tone: "" },
+  { id: "project", label: "프로젝트", icon: "project", url: "/project", tone: "green" },
+  { id: "graduate", label: "졸업작품", icon: "graduate", url: "/graduate", tone: "orange" },
+  { id: "portfolio", label: "포트폴리오", icon: "portfolio", url: "/portfolio", tone: "" },
+  { id: "user", label: "내 정보", icon: "user", url: "/user", tone: "green" },
 ];
+
+const ICONS = {
+  attendance: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v3M16 3v3M5 9h14"/><rect x="4" y="5" width="16" height="15" rx="3"/><path d="m8 14 2.2 2.2L16 11"/></svg>',
+  launcher: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/><path d="M5 5h5M5 19h5"/></svg>',
+  alerts: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>',
+  automation: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
+  drafts: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M8 12h8M8 16h6"/></svg>',
+  site: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M8 14h4M16 14h2"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .4 2l.1.1-2.8 2.8-.1-.1a1.8 1.8 0 0 0-2-.4 1.8 1.8 0 0 0-1 1.6v.2h-4V21a1.8 1.8 0 0 0-1-1.6 1.8 1.8 0 0 0-2 .4l-.1.1-2.8-2.8.1-.1a1.8 1.8 0 0 0 .4-2 1.8 1.8 0 0 0-1.6-1H3v-4h.2a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.4-2l-.1-.1 2.8-2.8.1.1a1.8 1.8 0 0 0 2 .4 1.8 1.8 0 0 0 1-1.6V3h4v.2a1.8 1.8 0 0 0 1 1.6 1.8 1.8 0 0 0 2-.4l.1-.1 2.8 2.8-.1.1a1.8 1.8 0 0 0-.4 2 1.8 1.8 0 0 0 1.6 1h.2v4h-.2a1.8 1.8 0 0 0-1.8 1Z"/></svg>',
+  freeboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v12H8l-3 3z"/><path d="M8 9h8M8 13h5"/></svg>',
+  quest: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l3 5-7 11L5 9z"/><path d="M9 9h6M10 13h4"/></svg>',
+  market: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 9 13l4 4 7-9"/><path d="M16 8h4v4"/></svg>',
+  shop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10h14l-1 10H6z"/><path d="M8 10a4 4 0 0 1 8 0M4 10l2-5h12l2 5"/></svg>',
+  circle: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 20a5 5 0 0 1 10 0M11 20a5 5 0 0 1 10 0"/></svg>',
+  project: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7l2 3h7v10H4z"/><path d="M8 13h8"/></svg>',
+  graduate: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 8 9-4 9 4-9 4z"/><path d="M7 11v5c3 2 7 2 10 0v-5M19 9v6"/></svg>',
+  portfolio: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M9 5V3h6v2M8 12h8M8 16h5"/></svg>',
+  user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>',
+  add: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+};
+
+function createIconMarkup(name) {
+  return ICONS[name] || ICONS.settings;
+}
 
 const FEATURES = [
   {
     id: "attendance",
     title: "출석체크",
     desc: "출석 상태와 수동 실행",
-    icon: "출",
+    icon: "attendance",
     tone: "",
     page: "attendance.html",
   },
@@ -23,7 +47,7 @@ const FEATURES = [
     id: "launcher",
     title: "빠른 이동 전체",
     desc: "모든 바로가기 보기",
-    icon: "이",
+    icon: "launcher",
     tone: "green",
     page: "launcher.html",
   },
@@ -31,15 +55,23 @@ const FEATURES = [
     id: "alerts",
     title: "관심 알림",
     desc: "새 글, 퀘스트, 주식 확인",
-    icon: "알",
+    icon: "alerts",
     tone: "orange",
     page: "alerts.html",
+  },
+  {
+    id: "automation",
+    title: "자동 알림",
+    desc: "시간, 조건, 행동을 조합",
+    icon: "automation",
+    tone: "teal",
+    page: "automation.html",
   },
   {
     id: "drafts",
     title: "임시저장",
     desc: "저장된 글과 댓글 관리",
-    icon: "글",
+    icon: "drafts",
     tone: "purple",
     page: "drafts.html",
   },
@@ -47,7 +79,7 @@ const FEATURES = [
     id: "site",
     title: "사이트 화면 보조",
     desc: "사이트 위 편의 기능",
-    icon: "화",
+    icon: "site",
     tone: "teal",
     page: "site.html",
   },
@@ -55,7 +87,7 @@ const FEATURES = [
     id: "settings",
     title: "전체 설정",
     desc: "토큰, 로그, 초기화",
-    icon: "설",
+    icon: "settings",
     tone: "red",
     page: "settings.html",
   },
@@ -107,7 +139,7 @@ async function runAttendance(button) {
   }
 }
 
-function renderActions(status, drafts) {
+function renderActions(status, drafts, automationRules) {
   const list = document.getElementById("actionList");
   const badge = document.getElementById("todayStatusBadge");
   list.replaceChildren();
@@ -147,6 +179,16 @@ function renderActions(status, drafts) {
     }));
   }
 
+  const activeAutomationCount = (automationRules || []).filter((rule) => rule.enabled).length;
+  if (activeAutomationCount > 0) {
+    list.appendChild(createActionButton({
+      label: `자동 알림 ${activeAutomationCount}개`,
+      detail: "시간이 되면 조건을 확인합니다",
+      tone: "green",
+      onClick: () => { window.location.href = "automation.html"; },
+    }));
+  }
+
   if (!list.children.length) {
     list.appendChild(createActionButton({
       label: "GGM Town 열기",
@@ -166,7 +208,7 @@ function renderQuickLinks(settings) {
   if (!links.length) {
     const empty = document.createElement("button");
     empty.className = "quick-btn";
-    empty.innerHTML = `<span class="quick-icon">＋</span>추가`;
+    empty.innerHTML = `<span class="quick-icon">${createIconMarkup("add")}</span>추가`;
     empty.addEventListener("click", () => {
       window.location.href = "home-settings.html";
     });
@@ -178,7 +220,7 @@ function renderQuickLinks(settings) {
     const button = document.createElement("button");
     button.className = "quick-btn";
     button.dataset.url = link.url;
-    button.innerHTML = `<span class="quick-icon ${link.tone}">${link.icon}</span>${link.label}`;
+    button.innerHTML = `<span class="quick-icon ${link.tone}">${createIconMarkup(link.icon)}</span>${link.label}`;
     button.addEventListener("click", async () => {
       await openGgmPage(link.url);
       window.close();
@@ -206,7 +248,7 @@ function renderFeatures(settings) {
     const button = document.createElement("button");
     button.className = "tool-card";
     button.innerHTML = `
-      <span class="feature-icon ${feature.tone}">${feature.icon}</span>
+      <span class="feature-icon ${feature.tone}">${createIconMarkup(feature.icon)}</span>
       <span class="tool-copy">
         <span class="feature-title">${feature.title}</span>
         <span class="feature-desc">${feature.desc}</span>
@@ -222,13 +264,14 @@ function renderFeatures(settings) {
 
 async function loadHome() {
   try {
-    const [status, settings, drafts] = await Promise.all([
+    const [status, settings, drafts, automations] = await Promise.all([
       chrome.runtime.sendMessage({ type: "GET_STATUS" }),
       chrome.runtime.sendMessage({ type: "GET_FEATURE_SETTINGS" }),
       chrome.runtime.sendMessage({ type: "GET_DRAFTS" }),
+      chrome.runtime.sendMessage({ type: "GET_AUTOMATION_RULES" }),
     ]);
 
-    renderActions(status, drafts);
+    renderActions(status, drafts, automations.rules || []);
     renderQuickLinks(settings);
     renderFeatures(settings);
   } catch (error) {

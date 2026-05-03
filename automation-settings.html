@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div class="app">
+    <header class="page-head">
+      <div class="page-top">
+        <button class="back-btn" id="backBtn">← 자동 알림</button>
+        <button class="icon-btn" id="globalSettingsBtn" title="전체 설정">⚙</button>
+      </div>
+      <h1 class="page-title">자동 알림 설정</h1>
+      <p class="page-subtitle">조건은 여러 개 선택할 수 있고, 행동도 여러 개 실행할 수 있습니다.</p>
+    </header>
+    <main class="page with-sticky-actions">
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark teal">규</span>
+            <div>
+              <div class="card-title">알림 규칙</div>
+              <div class="card-subtitle">일간보고서 자동 입력은 미작성 조건이 자동으로 포함됩니다.</div>
+            </div>
+          </div>
+          <span id="ruleCountBadge" class="badge">확인 중</span>
+        </div>
+        <div class="card-body">
+          <div id="ruleEditorList" class="automation-editor-list"></div>
+          <div class="btn-row">
+            <button id="addRuleBtn" class="btn btn-secondary">알림 추가</button>
+            <button id="resetRulesBtn" class="btn btn-secondary">기본 알림 복구</button>
+          </div>
+        </div>
+      </section>
+      <div class="sticky-actions">
+        <button id="saveBtn" class="btn btn-primary">저장</button>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="automation-settings.js"></script>
+</body>
+</html>

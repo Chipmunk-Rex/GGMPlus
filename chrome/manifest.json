@@ -7,8 +7,7 @@
     "alarms",
     "cookies",
     "notifications",
-    "storage",
-    "tabs"
+    "storage"
   ],
   "host_permissions": [
     "https://ggm.gondr.net/*"
@@ -40,6 +39,24 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "popup.html",
+        "attendance.html",
+        "attendance-settings.html",
+        "launcher.html",
+        "launcher-settings.html",
+        "alerts.html",
+        "alerts-settings.html",
+        "automation.html",
+        "automation-settings.html",
+        "drafts.html",
+        "drafts-settings.html",
+        "site.html",
+        "site-settings.html",
+        "activity.html",
+        "settings.html",
+        "home-settings.html",
+        "ui.css",
+        "assets/ggmplus-title.png",
         "icons/icon48.png"
       ],
       "matches": [
