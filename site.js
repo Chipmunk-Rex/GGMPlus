@@ -11,6 +11,7 @@ function updateFeatureBadge() {
   const enabledCount = [
     currentSettings.showFloatingPanel !== false,
     currentSettings.markReadPosts !== false,
+    currentSettings.darkModeEnabled === true,
   ].filter(Boolean).length;
   const badge = document.getElementById("featureBadge");
   badge.textContent = enabledCount ? `${enabledCount}개 활성` : "비활성";
@@ -24,6 +25,7 @@ async function saveSiteToggles() {
       ...currentSettings,
       showFloatingPanel: document.getElementById("showFloatingPanelToggle").checked,
       markReadPosts: document.getElementById("markReadPostsToggle").checked,
+      darkModeEnabled: document.getElementById("darkModeToggle").checked,
     },
   });
 
@@ -46,6 +48,7 @@ async function loadSiteStatus() {
   currentSettings = settings;
   document.getElementById("showFloatingPanelToggle").checked = currentSettings.showFloatingPanel !== false;
   document.getElementById("markReadPostsToggle").checked = currentSettings.markReadPosts !== false;
+  document.getElementById("darkModeToggle").checked = currentSettings.darkModeEnabled === true;
   updateFeatureBadge();
 
   const badge = document.getElementById("readPostBadge");
@@ -75,6 +78,7 @@ document.getElementById("openSettingsBtn").addEventListener("click", () => { win
 document.getElementById("openFreeboardBtn").addEventListener("click", () => openGgmPage("/town/freeboard"));
 document.getElementById("showFloatingPanelToggle").addEventListener("change", saveSiteToggles);
 document.getElementById("markReadPostsToggle").addEventListener("change", saveSiteToggles);
+document.getElementById("darkModeToggle").addEventListener("change", saveSiteToggles);
 
 loadSiteStatus().catch((error) => {
   console.error("사이트 화면 보조 상태 조회 실패:", error);

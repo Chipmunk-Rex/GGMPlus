@@ -153,6 +153,7 @@ const DEFAULT_FEATURE_SETTINGS = {
   utilityMonitorIntervalMinutes: 15,
   markReadPosts: true,
   showFloatingPanel: true,
+  darkModeEnabled: false,
   homeFeatureOrder: HOME_FEATURE_IDS,
   hiddenHomeFeatures: [],
   favoriteQuickLinks: ["freeboard", "quest", "market", "shop"],
@@ -251,6 +252,7 @@ function normalizeFeatureSettings(raw = {}) {
     ),
     markReadPosts: raw.markReadPosts !== false,
     showFloatingPanel: raw.showFloatingPanel !== false,
+    darkModeEnabled: raw.darkModeEnabled === true,
     homeFeatureOrder: [
       ...normalizeStringList(raw.homeFeatureOrder, HOME_FEATURE_IDS, HOME_FEATURE_IDS),
       ...HOME_FEATURE_IDS,
