@@ -201,6 +201,7 @@ function maskHeaders(headers) {
     ...headers,
     Authorization: headers.Authorization ? "Bearer ***" : undefined,
     "X-XSRF-TOKEN": headers["X-XSRF-TOKEN"] ? "***" : undefined,
+    "X-Spa-Token": headers["X-Spa-Token"] ? "***" : undefined,
   };
 }
 
@@ -453,28 +454,166 @@ async function openGgmPage(pathOrUrl) {
   await chrome.tabs.create({ url: toGgmUrl(pathOrUrl) });
 }
 
-async function requestGgmApi(path, options = {}) {
-  const authRequired = options.authRequired !== false;
-  const bearerToken = await getBearerToken();
+const GGM_PAGE_REQUEST_TIMEOUT_MS = 15000;
+const GGM_CONTENT_READY_RETRIES = 8;
+const GGM_CONTENT_READY_DELAY_MS = 500;
 
-  if (authRequired && !bearerToken) {
-    throw new Error("로그인 토큰이 없어 확인할 수 없습니다.");
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getGgmRequestTab() {
+  const existingTabs = await chrome.tabs.query({ url: `https://${TARGET_DOMAIN}/*` });
+  if (existingTabs.length > 0) {
+    return { tab: existingTabs[0], temporary: false };
   }
+
+  const tab = await chrome.tabs.create({
+    url: `https://${TARGET_DOMAIN}/`,
+    active: false,
+  });
+  return { tab, temporary: true };
+}
+
+function sendTabMessageWithTimeout(tabId, message) {
+  return Promise.race([
+    chrome.tabs.sendMessage(tabId, message),
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error("GGM page request timed out.")),
+        GGM_PAGE_REQUEST_TIMEOUT_MS,
+      ),
+    ),
+  ]);
+}
+
+function withoutHeader(fetchOptions, headerName) {
+  const nextOptions = {
+    ...fetchOptions,
+    headers: {
+      ...(fetchOptions.headers || {}),
+    },
+  };
+  const lowerHeaderName = headerName.toLowerCase();
+
+  for (const key of Object.keys(nextOptions.headers)) {
+    if (key.toLowerCase() === lowerHeaderName) {
+      delete nextOptions.headers[key];
+    }
+  }
+
+  return nextOptions;
+}
+
+async function requestFromGgmPage(pathOrUrl, fetchOptions) {
+  const { tab, temporary } = await getGgmRequestTab();
+  let lastError = null;
+
+  try {
+    for (let attempt = 0; attempt < GGM_CONTENT_READY_RETRIES; attempt += 1) {
+      try {
+        const result = await sendTabMessageWithTimeout(tab.id, {
+          type: "GGM_API_REQUEST",
+          url: toGgmUrl(pathOrUrl),
+          options: fetchOptions,
+        });
+
+        if (!result || !result.success) {
+          throw new Error(result?.error || "GGM page request failed.");
+        }
+
+        return result.response;
+      } catch (error) {
+        lastError = error;
+        await sleep(GGM_CONTENT_READY_DELAY_MS);
+      }
+    }
+
+    throw lastError || new Error("GGM page request failed.");
+  } finally {
+    if (temporary && tab.id) {
+      try {
+        await chrome.tabs.remove(tab.id);
+      } catch (error) {
+        console.warn("[GGMAuto] 임시 GGM 탭 닫기 실패:", error);
+      }
+    }
+  }
+}
+
+async function fetchGgmWithCorsFallback(pathOrUrl, fetchOptions) {
+  const response = await fetch(toGgmUrl(pathOrUrl), fetchOptions);
+  const text = await response.text();
+
+  if (response.status !== 401 && response.status !== 403) {
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      url: response.url,
+      text,
+      fromPageContext: false,
+    };
+  }
+
+  console.warn(
+    `[GGMAuto] ${response.status} 응답 감지 - GGM 페이지 컨텍스트에서 재시도합니다.`,
+  );
+
+  try {
+    let pageResponse = await requestFromGgmPage(pathOrUrl, fetchOptions);
+
+    if (
+      (pageResponse.status === 401 || pageResponse.status === 403) &&
+      fetchOptions.headers?.Authorization
+    ) {
+      console.warn("[GGMAuto] Bearer 인증 실패 - 쿠키 기반 요청으로 재시도합니다.");
+      pageResponse = await requestFromGgmPage(
+        pathOrUrl,
+        withoutHeader(fetchOptions, "Authorization"),
+      );
+    }
+
+    return {
+      ...pageResponse,
+      fromPageContext: true,
+    };
+  } catch (error) {
+    console.warn("[GGMAuto] GGM 페이지 컨텍스트 재시도 실패:", error);
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      url: response.url,
+      text,
+      fromPageContext: false,
+    };
+  }
+}
+
+async function requestGgmApi(path, options = {}) {
+  const bearerToken = await getBearerToken();
+  const authMeta = await getAuthMeta();
 
   const headers = {
     Accept: "application/json",
+    "X-Requested-With": "XMLHttpRequest",
   };
 
-  if (bearerToken) {
-    headers.Authorization = `Bearer ${bearerToken}`;
+  if (authMeta.spaToken) {
+    headers["X-Spa-Token"] = authMeta.spaToken;
   }
 
-  const response = await fetch(toGgmUrl(path), {
+  if (bearerToken) {
+    headers.Authorization = `${authMeta.tokenType || "Bearer"} ${bearerToken}`;
+  }
+
+  const response = await fetchGgmWithCorsFallback(path, {
     method: "GET",
     headers,
     credentials: "include",
   });
-  const text = await response.text();
+  const text = response.text;
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
@@ -1108,6 +1247,25 @@ async function getBearerToken() {
   }
 }
 
+async function getAuthMeta() {
+  try {
+    const result = await chrome.storage.local.get([
+      "tokenType",
+      "spaToken",
+      "csrfToken",
+    ]);
+
+    return {
+      tokenType: result.tokenType || "Bearer",
+      spaToken: result.spaToken || null,
+      csrfToken: result.csrfToken || null,
+    };
+  } catch (error) {
+    console.error("[GGMAuto] 인증 메타 조회 실패:", error);
+    return { tokenType: "Bearer", spaToken: null, csrfToken: null };
+  }
+}
+
 /**
  * X-XSRF-TOKEN 쿠키 가져오기
  */
@@ -1206,20 +1364,22 @@ async function sendAttendance(retryAfterRefresh = true) {
           return await sendAttendance(false);
         }
       }
-
-      const errorMsg = "Bearer 토큰 없음 - 사이트 로그인 필요";
-      console.error("[GGMAuto] ❌", errorMsg);
-      await saveAttendanceResult(false, errorMsg);
-      showNotification("출석체크 실패", errorMsg);
-      return { success: false, error: errorMsg };
     }
 
     // 3. 요청 헤더 구성
+    const authMeta = await getAuthMeta();
     const headers = {
-      "Content-Type": ATTENDANCE_CONFIG.contentType,
-      Authorization: `Bearer ${bearerToken}`,
       Accept: "application/json",
+      "X-Requested-With": "XMLHttpRequest",
     };
+
+    if (authMeta.spaToken) {
+      headers["X-Spa-Token"] = authMeta.spaToken;
+    }
+
+    if (bearerToken) {
+      headers.Authorization = `${authMeta.tokenType || "Bearer"} ${bearerToken}`;
+    }
 
     // XSRF 토큰이 있는 경우에만 추가
     if (xsrfToken) {
@@ -1236,14 +1396,15 @@ async function sendAttendance(retryAfterRefresh = true) {
     // GET 요청이 아닌 경우에만 body 추가
     if (ATTENDANCE_CONFIG.method !== "GET" && ATTENDANCE_CONFIG.body) {
       fetchOptions.body = ATTENDANCE_CONFIG.body;
+      headers["Content-Type"] = ATTENDANCE_CONFIG.contentType;
     }
 
     console.log("[GGMAuto] 📡 요청 전송:", ATTENDANCE_CONFIG.url);
     console.log("[GGMAuto] 📋 헤더:", JSON.stringify(maskHeaders(headers), null, 2));
     console.log("[GGMAuto] 📦 Body:", fetchOptions.body || "(없음)");
 
-    const response = await fetch(ATTENDANCE_CONFIG.url, fetchOptions);
-    const responseText = await response.text();
+    const response = await fetchGgmWithCorsFallback(ATTENDANCE_CONFIG.url, fetchOptions);
+    const responseText = response.text;
     
     // JSON 응답 파싱 시도 (유니코드 이스케이프 디코딩)
     let decodedMessage = responseText;
@@ -1632,6 +1793,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const storageData = {
       bearerToken: message.data.token,
+      tokenType: message.data.type || "Bearer",
+      spaToken: message.data.spaToken || null,
+      csrfToken: message.data.csrfToken || null,
       tokenExpiry: normalizeTokenExpiry(message.data.expiry),
       tokenUpdatedAt: new Date().toISOString(),
     };

@@ -76,19 +76,20 @@ function parseTokenValue(value) {
         if (parsed[field]) {
           return {
             token: parsed[field],
+            type: parsed.type || parsed.token_type || parsed.tokenType || "Bearer",
             expiry: parsed.expiry || parsed.exp || parsed.expires_at || null
           };
         }
       }
       // 필드를 못찾으면 원본 반환
-      return { token: value, expiry: null };
+      return { token: value, type: "Bearer", expiry: null };
     }
-    
+
     // 문자열인 경우 그대로 반환
-    return { token: parsed, expiry: null };
+    return { token: parsed, type: "Bearer", expiry: null };
   } catch (e) {
     // JSON 파싱 실패 시 원본 문자열 반환
-    return { token: value, expiry: null };
+    return { token: value, type: "Bearer", expiry: null };
   }
 }
 
@@ -96,6 +97,11 @@ function parseTokenValue(value) {
  * 페이지 전역 변수에서 토큰 찾기 (고급)
  * 일부 사이트는 window 객체에 토큰을 저장함
  */
+function getMetaContent(name) {
+  const element = document.querySelector(`meta[name="${name}"]`);
+  return element ? element.getAttribute("content") : null;
+}
+
 function findTokenInWindow() {
   // 공통적인 전역 변수명들
   const windowKeys = [
@@ -114,7 +120,7 @@ function findTokenInWindow() {
       const token = findTokenInObject(state);
       if (token) {
         console.log("[GGMAuto Content] 🔑 __INITIAL_STATE__에서 토큰 발견");
-        return { token, expiry: null };
+        return { token, type: "Bearer", expiry: null };
       }
     }
     
@@ -123,7 +129,7 @@ function findTokenInWindow() {
       const token = findTokenInObject(window.__NUXT__);
       if (token) {
         console.log("[GGMAuto Content] 🔑 __NUXT__에서 토큰 발견");
-        return { token, expiry: null };
+        return { token, type: "Bearer", expiry: null };
       }
     }
     
@@ -189,7 +195,10 @@ async function sendTokenToBackground(tokenData) {
     console.log("[GGMAuto Content] ⚠️ 전송할 토큰이 없습니다.");
     return;
   }
-  
+
+  tokenData.spaToken = getMetaContent("spa-token");
+  tokenData.csrfToken = getMetaContent("csrf-token");
+
   try {
     const response = await chrome.runtime.sendMessage({
       type: "TOKEN_UPDATE",
@@ -1442,6 +1451,59 @@ function startDailyReportFillManager() {
     }
   });
 }
+
+// ============================================
+// GGM 페이지 API 요청 브리지
+// ============================================
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type !== "GGM_API_REQUEST") return false;
+
+  (async () => {
+    try {
+      const requestUrl = new URL(message.url, location.origin);
+      if (requestUrl.origin !== location.origin) {
+        throw new Error("Blocked cross-origin page-context request.");
+      }
+
+      const headers = {
+        ...(message.options?.headers || {}),
+      };
+      const spaToken = getMetaContent("spa-token");
+      if (spaToken && !headers["X-Spa-Token"]) {
+        headers["X-Spa-Token"] = spaToken;
+      }
+      if (!headers["X-Requested-With"]) {
+        headers["X-Requested-With"] = "XMLHttpRequest";
+      }
+
+      const response = await fetch(requestUrl.href, {
+        ...(message.options || {}),
+        headers,
+        credentials: "include",
+      });
+      const text = await response.text();
+
+      sendResponse({
+        success: true,
+        response: {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          text,
+        },
+      });
+    } catch (error) {
+      sendResponse({
+        success: false,
+        error: error.message || "GGM page request failed.",
+      });
+    }
+  })();
+
+  return true;
+});
 
 // ============================================
 // 🚀 초기화
