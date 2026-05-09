@@ -31,6 +31,15 @@
         "https://ggm.gondr.net/*"
       ],
       "js": [
+        "shared/message-types.js",
+        "shared/dom.js",
+        "content/token-watcher.js",
+        "content/drafts.js",
+        "content/read-posts.js",
+        "content/dark-mode.js",
+        "content/floating-panel.js",
+        "content/daily-report-fill.js",
+        "content/api-bridge.js",
         "content_script.js"
       ],
       "run_at": "document_idle"

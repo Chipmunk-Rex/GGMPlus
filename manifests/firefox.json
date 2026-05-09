@@ -15,6 +15,18 @@
   ],
   "background": {
     "scripts": [
+      "shared/constants.js",
+      "shared/message-types.js",
+      "shared/ggm-url.js",
+      "background/config.js",
+      "background/storage.js",
+      "background/activity.js",
+      "background/notifications.js",
+      "background/auth.js",
+      "background/utility-monitor.js",
+      "background/automation.js",
+      "background/attendance.js",
+      "background/messages.js",
       "background.js"
     ]
   },
@@ -34,6 +46,15 @@
         "https://ggm.gondr.net/*"
       ],
       "js": [
+        "shared/message-types.js",
+        "shared/dom.js",
+        "content/token-watcher.js",
+        "content/drafts.js",
+        "content/read-posts.js",
+        "content/dark-mode.js",
+        "content/floating-panel.js",
+        "content/daily-report-fill.js",
+        "content/api-bridge.js",
         "content_script.js"
       ],
       "run_at": "document_idle"
