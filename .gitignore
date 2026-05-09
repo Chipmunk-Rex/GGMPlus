@@ -4,3 +4,4 @@
 
 # Extension package outputs
 *.zip
+dist/
