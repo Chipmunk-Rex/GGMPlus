@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div class="app">
+    <header class="page-head">
+      <div class="page-top">
+        <button class="back-btn" id="backBtn">홈</button>
+        <button class="icon-btn" id="globalSettingsBtn" title="전체 설정">⚙</button>
+      </div>
+      <h1 class="page-title">자동 미션</h1>
+      <p class="page-subtitle">자동 미션을 켜면 프로필 방문, 포트폴리오 평가, 응원 댓글 미션을 세부 설정할 수 있습니다.</p>
+    </header>
+
+    <main class="page mission-page with-sticky-actions">
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark green">실</span>
+            <div>
+              <div class="card-title">실행 설정</div>
+              <div class="card-subtitle">주기 실행 또는 하루 한 번 지정 시간 실행을 선택할 수 있습니다.</div>
+            </div>
+          </div>
+          <span id="missionStatusBadge" class="badge pending">확인 중</span>
+        </div>
+        <div class="card-body">
+          <label class="toggle-card mission-toggle-wide">
+            <input id="autoMissionEnabled" type="checkbox">
+            <span class="toggle-visual"></span>
+            <span class="toggle-name">자동 미션 활성화</span>
+          </label>
+          <div class="grid-2 mission-master-options">
+            <div class="field">
+              <label for="missionIntervalMinutes">실행 주기(분)</label>
+              <input id="missionIntervalMinutes" class="setting-input" type="number" min="15" max="1440" step="5">
+            </div>
+            <div class="field">
+              <label for="missionRunTime">실행 시간(선택)</label>
+              <input id="missionRunTime" class="setting-input" type="time">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-head mission-detail-section">
+        <div>
+          <h2>미션 수행</h2>
+          <p>자동 미션이 켜져 있을 때만 실행됩니다.</p>
+        </div>
+      </section>
+
+      <section class="card mission-detail-section">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark teal">방</span>
+            <div>
+              <div class="card-title">프로필 페이지 방문 미션</div>
+              <div class="card-subtitle">실제 페이지를 열지 않고 userId 1 방문 기록만 미션 API로 전송합니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <label class="toggle-card mission-toggle-wide">
+            <input id="enablePortfolioVisitMission" type="checkbox">
+            <span class="toggle-visual"></span>
+            <span class="toggle-name">프로필 페이지 방문 미션 자동 수행</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card mission-detail-section">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark orange">평</span>
+            <div>
+              <div class="card-title">포트폴리오 평가 미션</div>
+              <div class="card-subtitle">평가를 남기는 미션입니다. 코멘트는 비워둘 수 있습니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <label class="toggle-card mission-toggle-wide">
+            <input id="enablePortfolioRate" type="checkbox">
+            <span class="toggle-visual"></span>
+            <span class="toggle-name">포트폴리오 평가 미션 자동 수행</span>
+          </label>
+          <div class="grid-2">
+            <div class="field">
+              <label for="portfolioRatePortfolioId">대상 portfolioId</label>
+              <input id="portfolioRatePortfolioId" class="setting-input" type="number" min="1" step="1">
+            </div>
+            <div class="field">
+              <label for="portfolioRateScore">평가 점수</label>
+              <input id="portfolioRateScore" class="setting-input" type="number" min="1" max="5" step="1">
+            </div>
+          </div>
+          <div class="field">
+            <label for="portfolioRateComment">평가 코멘트</label>
+            <textarea id="portfolioRateComment" class="setting-input mission-textarea" maxlength="300"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card mission-detail-section">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark purple">응</span>
+            <div>
+              <div class="card-title">응원 댓글 미션</div>
+              <div class="card-subtitle">설정한 대상에게 응원 댓글을 작성하는 미션입니다.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <label class="toggle-card mission-toggle-wide">
+            <input id="enableCheerComment" type="checkbox">
+            <span class="toggle-visual"></span>
+            <span class="toggle-name">응원 댓글 미션 자동 수행</span>
+          </label>
+          <div class="field">
+            <label for="cheerTargetUserId">응원 대상 userId</label>
+            <input id="cheerTargetUserId" class="setting-input" type="number" min="1" step="1">
+          </div>
+          <div class="field">
+            <label for="cheerContent">응원 댓글 문구</label>
+            <textarea id="cheerContent" class="setting-input mission-textarea" maxlength="200"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="title-group">
+            <span class="mark red">록</span>
+            <div>
+              <div class="card-title">최근 실행 결과</div>
+              <div class="card-subtitle">수동 실행과 자동 실행 결과를 함께 보여줍니다.</div>
+            </div>
+          </div>
+          <button id="refreshLogsBtn" class="mini-link">새로고침</button>
+        </div>
+        <div class="card-body">
+          <div class="list mission-log-list" id="missionLogList">
+            <div class="empty-state">로그를 불러오는 중...</div>
+          </div>
+          <div class="btn-row">
+            <button id="runNowBtn" class="btn btn-secondary">수동 실행</button>
+            <button id="clearLogsBtn" class="btn btn-secondary">로그 삭제</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="sticky-actions">
+        <button id="saveBtn" class="btn btn-primary">저장</button>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">실행 상세</span>
+        <button class="modal-close" id="modalClose">X</button>
+      </div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+  <script src="mission.js"></script>
+</body>
+</html>

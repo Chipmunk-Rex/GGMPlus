@@ -163,12 +163,17 @@ async function fetchGgmWithCorsFallback(pathOrUrl, fetchOptions) {
 }
 
 async function requestGgmApi(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
   const bearerToken = await getBearerToken();
   const authMeta = await getAuthMeta();
+  const xsrfToken = method === "GET" || method === "HEAD"
+    ? null
+    : await getXsrfToken();
 
   const headers = {
     Accept: "application/json",
     "X-Requested-With": "XMLHttpRequest",
+    ...(options.headers || {}),
   };
 
   if (authMeta.spaToken) {
@@ -179,11 +184,27 @@ async function requestGgmApi(path, options = {}) {
     headers.Authorization = `${authMeta.tokenType || "Bearer"} ${bearerToken}`;
   }
 
-  const response = await fetchGgmWithCorsFallback(path, {
-    method: "GET",
+  if (xsrfToken) {
+    headers["X-XSRF-TOKEN"] = xsrfToken;
+  }
+
+  const fetchOptions = {
+    method,
     headers,
     credentials: "include",
-  });
+  };
+
+  if (options.body !== undefined && options.body !== null) {
+    fetchOptions.body = typeof options.body === "string"
+      ? options.body
+      : JSON.stringify(options.body);
+
+    if (options.contentType !== false && !headers["Content-Type"]) {
+      headers["Content-Type"] = options.contentType || "application/json";
+    }
+  }
+
+  const response = await fetchGgmWithCorsFallback(path, fetchOptions);
   const text = response.text;
 
   if (!response.ok) {

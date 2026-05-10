@@ -12,6 +12,8 @@ if (typeof importScripts === "function") {
     "background/utility-monitor.js",
     "background/automation.js",
     "background/attendance.js",
+    "background/mission.js",
+    "background/reward.js",
     "background/messages.js",
   );
 }
@@ -24,6 +26,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   await setupAttendanceAlarm();
   await setupUtilityMonitorAlarm();
   await setupAutomationAlarms();
+  await setupMissionAlarm();
+  await setupRewardAlarm();
 
   // 설치 알림
   if (details.reason === "install") {
@@ -44,6 +48,8 @@ chrome.runtime.onStartup.addListener(async () => {
   await setupAttendanceAlarm();
   await setupUtilityMonitorAlarm();
   await setupAutomationAlarms();
+  await setupMissionAlarm();
+  await setupRewardAlarm();
   
   await scheduleInitialCheckAlarm();
 });
@@ -69,6 +75,12 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   } else if (alarm.name === UTILITY_MONITOR_ALARM_NAME) {
     console.log("[GGMAuto] 유틸리티 모니터 알람 트리거됨");
     await runUtilityMonitor();
+  } else if (alarm.name === MISSION_ALARM_NAME) {
+    console.log("[GGMAuto] Mission automation alarm triggered.");
+    await runMissionAutomation();
+  } else if (alarm.name === REWARD_ALARM_NAME) {
+    console.log("[GGMAuto] Reward automation alarm triggered.");
+    await runRewardAutomation();
   } else if (alarm.name.startsWith(AUTOMATION_ALARM_PREFIX)) {
     const ruleId = alarm.name.slice(AUTOMATION_ALARM_PREFIX.length);
     const rules = await getAutomationRules();

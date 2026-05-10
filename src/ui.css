@@ -440,6 +440,29 @@ input {
   padding-bottom: 74px;
 }
 
+.mission-page .card-header {
+  align-items: flex-start;
+}
+
+.mission-page .title-group {
+  flex: 1 1 auto;
+  align-items: flex-start;
+}
+
+.mission-page .card-subtitle,
+.page-head .page-subtitle {
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.mission-page .grid-2 {
+  grid-template-columns: 1fr;
+}
+
+.mission-page .field:last-child {
+  margin-bottom: 0;
+}
+
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -655,11 +678,42 @@ input {
   left: 17px;
 }
 
+.mission-toggle-wide {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  margin-bottom: 12px;
+}
+
+.mission-toggle-wide .toggle-visual {
+  margin-bottom: 0;
+}
+
+.mission-toggle-wide .toggle-name {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .toggle-name {
   display: block;
   color: #263247;
   font-size: 12px;
   font-weight: 900;
+}
+
+.mission-textarea {
+  min-height: 74px;
+  padding: 9px 11px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.mission-log-list {
+  max-height: 260px;
 }
 
 .manage-list {

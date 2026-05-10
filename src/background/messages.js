@@ -226,6 +226,112 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // GGM 페이지 열기
+  if (message.type === MESSAGE_TYPES.GET_MISSION_SETTINGS) {
+    getMissionSettings().then((settings) => {
+      sendResponse({ settings });
+    }).catch((error) => {
+      sendResponse({ settings: DEFAULT_MISSION_SETTINGS, error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.SAVE_MISSION_SETTINGS) {
+    (async () => {
+      try {
+        const settings = await saveMissionSettings(message.data || {});
+        await saveActivity(
+          "settings",
+          "자동 미션 설정 변경",
+          "자동 미션 설정을 저장했습니다.",
+        );
+        sendResponse({ success: true, settings });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.RUN_MISSION_AUTOMATION) {
+    runMissionAutomation({ manual: true }).then((summary) => {
+      sendResponse({ success: summary.success, summary });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.GET_MISSION_LOGS) {
+    getMissionLogs().then((logs) => {
+      sendResponse({ logs });
+    }).catch((error) => {
+      sendResponse({ logs: [], error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.CLEAR_MISSION_LOGS) {
+    clearMissionLogs().then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.GET_REWARD_SETTINGS) {
+    getRewardSettings().then((settings) => {
+      sendResponse({ settings });
+    }).catch((error) => {
+      sendResponse({ settings: DEFAULT_REWARD_SETTINGS, error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.SAVE_REWARD_SETTINGS) {
+    (async () => {
+      try {
+        const settings = await saveRewardSettings(message.data || {});
+        await saveActivity(
+          "settings",
+          "자동 수령 설정 변경",
+          "자동 수령 설정을 저장했습니다.",
+        );
+        sendResponse({ success: true, settings });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.RUN_REWARD_AUTOMATION) {
+    runRewardAutomation({ manual: true }).then((summary) => {
+      sendResponse({ success: summary.success, summary });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.GET_REWARD_LOGS) {
+    getRewardLogs().then((logs) => {
+      sendResponse({ logs });
+    }).catch((error) => {
+      sendResponse({ logs: [], error: error.message });
+    });
+    return true;
+  }
+
+  if (message.type === MESSAGE_TYPES.CLEAR_REWARD_LOGS) {
+    clearRewardLogs().then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
   if (message.type === MESSAGE_TYPES.OPEN_GGM_PAGE) {
     openGgmPage(message.url || "/").then(() => {
       sendResponse({ success: true });
@@ -322,6 +428,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setupAttendanceAlarm(DEFAULT_ALARM_CONFIG);
         await setupUtilityMonitorAlarm(DEFAULT_FEATURE_SETTINGS);
         await setupAutomationAlarms(DEFAULT_AUTOMATION_RULES);
+        await setupMissionAlarm(DEFAULT_MISSION_SETTINGS);
+        await setupRewardAlarm(DEFAULT_REWARD_SETTINGS);
 
         console.log("[GGMAuto] 🗑️ 전체 초기화 완료");
         sendResponse({ success: true });

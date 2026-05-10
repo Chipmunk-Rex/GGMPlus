@@ -21,6 +21,16 @@ const FEATURES = [
 ];
 
 let currentSettings = {};
+FEATURES.splice(1, 0, {
+  id: "mission",
+  title: "자동 미션",
+  desc: "미션 수행 자동화",
+});
+FEATURES.splice(2, 0, {
+  id: "reward",
+  title: "자동 수령",
+  desc: "미션과 우편함 보상 수령",
+});
 let featureOrder = FEATURES.map((feature) => feature.id);
 
 function showToast(message) {
@@ -42,6 +52,16 @@ const FEATURE_ICON_META = {
   drafts: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M8 12h8M8 16h6"/></svg>', tone: "purple" },
   site: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M8 14h4M16 14h2"/></svg>', tone: "teal" },
   settings: { icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .4 2l.1.1-2.8 2.8-.1-.1a1.8 1.8 0 0 0-2-.4 1.8 1.8 0 0 0-1 1.6v.2h-4V21a1.8 1.8 0 0 0-1-1.6 1.8 1.8 0 0 0-2 .4l-.1.1-2.8-2.8.1-.1a1.8 1.8 0 0 0 .4-2 1.8 1.8 0 0 0-1.6-1H3v-4h.2a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.4-2l-.1-.1 2.8-2.8.1.1a1.8 1.8 0 0 0 2 .4 1.8 1.8 0 0 0 1-1.6V3h4v.2a1.8 1.8 0 0 0 1 1.6 1.8 1.8 0 0 0 2-.4l.1-.1 2.8 2.8-.1.1a1.8 1.8 0 0 0-.4 2 1.8 1.8 0 0 0 1.6 1h.2v4h-.2a1.8 1.8 0 0 0-1.8 1Z"/></svg>', tone: "red" },
+};
+
+FEATURE_ICON_META.mission = {
+  icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-5"/><path d="M5 4h14v16H5z"/><path d="M8 17h8"/></svg>',
+  tone: "green",
+};
+
+FEATURE_ICON_META.reward = {
+  icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v8H4v-8"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 1 1 2.1-3.9C10.4 4.2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 1 0-2.1-3.9C13.6 4.2 12 7 12 7z"/></svg>',
+  tone: "orange",
 };
 
 function createFeatureIcon(featureId) {

@@ -26,6 +26,8 @@
       "background/utility-monitor.js",
       "background/automation.js",
       "background/attendance.js",
+      "background/mission.js",
+      "background/reward.js",
       "background/messages.js",
       "background.js"
     ]
@@ -66,6 +68,8 @@
         "popup.html",
         "attendance.html",
         "attendance-settings.html",
+        "mission.html",
+        "reward.html",
         "launcher.html",
         "launcher-settings.html",
         "alerts.html",

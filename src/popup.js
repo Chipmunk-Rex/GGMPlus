@@ -12,6 +12,8 @@ const QUICK_LINKS = [
 
 const ICONS = {
   attendance: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v3M16 3v3M5 9h14"/><rect x="4" y="5" width="16" height="15" rx="3"/><path d="m8 14 2.2 2.2L16 11"/></svg>',
+  mission: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-5"/><path d="M5 4h14v16H5z"/><path d="M8 17h8"/></svg>',
+  reward: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v8H4v-8"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 1 1 2.1-3.9C10.4 4.2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 1 0-2.1-3.9C13.6 4.2 12 7 12 7z"/></svg>',
   launcher: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/><path d="M5 5h5M5 19h5"/></svg>',
   alerts: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>',
   automation: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
@@ -42,6 +44,22 @@ const FEATURES = [
     icon: "attendance",
     tone: "",
     page: "attendance.html",
+  },
+  {
+    id: "mission",
+    title: "자동 미션",
+    desc: "미션 수행 자동화",
+    icon: "mission",
+    tone: "green",
+    page: "mission.html",
+  },
+  {
+    id: "reward",
+    title: "자동 수령",
+    desc: "미션과 우편함 보상 수령",
+    icon: "reward",
+    tone: "orange",
+    page: "reward.html",
   },
   {
     id: "launcher",

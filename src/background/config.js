@@ -19,9 +19,13 @@ const DEFAULT_ALARM_CONFIG = {
 
 const UTILITY_MONITOR_ALARM_NAME = "utilityMonitorAlarm";
 const AUTOMATION_ALARM_PREFIX = "automationRule:";
+const MISSION_ALARM_NAME = "missionAutomationAlarm";
+const REWARD_ALARM_NAME = "rewardAutomationAlarm";
 const MAX_ACTIVITY_ITEMS = 120;
 const HOME_FEATURE_IDS = [
   "attendance",
+  "mission",
+  "reward",
   "launcher",
   "alerts",
   "automation",
@@ -44,6 +48,28 @@ const QUICK_LINK_IDS = [
 const CONDITION_TYPES = ["always", "dailyReportMissing", "jobCheerUpdated"];
 const ACTION_TYPES = ["notify", "openPage", "fillDailyReport"];
 const DEFAULT_DAILY_REPORT_URL = "https://ggm.gondr.net/project/team/{teamId}";
+const DEFAULT_MISSION_SETTINGS = {
+  autoMissionEnabled: false,
+  missionIntervalMinutes: 60,
+  missionRunTime: "",
+  enablePortfolioVisitMission: true,
+  portfolioVisitUserId: 1,
+  enablePortfolioRate: true,
+  portfolioRatePortfolioId: 2551,
+  portfolioRateScore: 5,
+  portfolioRateComment: "",
+  enableCheerComment: true,
+  cheerTargetUserId: 1,
+  cheerContent: "응원합니다!",
+};
+const DEFAULT_REWARD_SETTINGS = {
+  autoRewardEnabled: false,
+  rewardIntervalMinutes: 60,
+  rewardRunTime: "",
+  rewardClaimDailyMissions: true,
+  rewardClaimWeeklyMissions: true,
+  rewardClaimMailbox: true,
+};
 const DEFAULT_AUTOMATION_RULES = [
   {
     id: "daily-report-reminder",
