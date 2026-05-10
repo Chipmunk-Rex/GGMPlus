@@ -26,7 +26,7 @@ function normalizeMissionTime(value) {
 function normalizeMissionSettings(raw = {}) {
   const defaults = DEFAULT_MISSION_SETTINGS;
   return {
-    autoMissionEnabled: raw.autoMissionEnabled === true,
+    autoMissionEnabled: raw.autoMissionEnabled !== false,
     missionIntervalMinutes: clampInteger(
       raw.missionIntervalMinutes,
       15,

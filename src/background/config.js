@@ -49,7 +49,7 @@ const CONDITION_TYPES = ["always", "dailyReportMissing", "jobCheerUpdated"];
 const ACTION_TYPES = ["notify", "openPage", "fillDailyReport"];
 const DEFAULT_DAILY_REPORT_URL = "https://ggm.gondr.net/project/team/{teamId}";
 const DEFAULT_MISSION_SETTINGS = {
-  autoMissionEnabled: false,
+  autoMissionEnabled: true,
   missionIntervalMinutes: 60,
   missionRunTime: "",
   enablePortfolioVisitMission: true,

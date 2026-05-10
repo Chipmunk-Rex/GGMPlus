@@ -1,5 +1,9 @@
 let currentRewardSettings = {};
 let rewardLogs = [];
+let autoSaveTimer = null;
+let saveState = "idle";
+let saveStateTimer = null;
+let saveRequestId = 0;
 
 const REWARD_DEFAULTS = {
   autoRewardEnabled: false,
@@ -9,6 +13,15 @@ const REWARD_DEFAULTS = {
   rewardClaimWeeklyMissions: true,
   rewardClaimMailbox: true,
 };
+
+const SETTING_CONTROL_IDS = [
+  "autoRewardEnabled",
+  "rewardIntervalMinutes",
+  "rewardRunTime",
+  "rewardClaimDailyMissions",
+  "rewardClaimWeeklyMissions",
+  "rewardClaimMailbox",
+];
 
 function showToast(message) {
   const toast = document.getElementById("toast");
@@ -39,9 +52,52 @@ function updateRewardVisibility() {
     element.hidden = !enabled;
   });
 
+  updateRewardStatusBadge();
+}
+
+function updateRewardStatusBadge() {
   const badge = document.getElementById("rewardStatusBadge");
+  const enabled = getChecked("autoRewardEnabled");
+
+  if (saveState === "saving") {
+    badge.textContent = "저장 중";
+    badge.className = "badge pending";
+    return;
+  }
+
+  if (saveState === "saved") {
+    badge.textContent = "저장됨";
+    badge.className = "badge success";
+    return;
+  }
+
+  if (saveState === "error") {
+    badge.textContent = "저장 실패";
+    badge.className = "badge error";
+    return;
+  }
+
   badge.textContent = enabled ? "활성" : "꺼짐";
   badge.className = enabled ? "badge success" : "badge";
+}
+
+function setSaveState(nextState) {
+  saveState = nextState;
+  if (saveStateTimer) {
+    clearTimeout(saveStateTimer);
+    saveStateTimer = null;
+  }
+
+  updateRewardStatusBadge();
+
+  if (nextState === "saved") {
+    saveStateTimer = setTimeout(() => {
+      if (saveState === "saved") {
+        saveState = "idle";
+        updateRewardStatusBadge();
+      }
+    }, 1400);
+  }
 }
 
 function formatDate(isoString) {
@@ -133,19 +189,66 @@ async function loadSettings() {
   renderSettings(response.settings || REWARD_DEFAULTS);
 }
 
-async function saveSettings() {
+async function saveSettings(options = {}) {
+  const { showSuccessToast = false } = options;
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+  }
+
+  const requestId = ++saveRequestId;
+  setSaveState("saving");
   const response = await chrome.runtime.sendMessage({
     type: "SAVE_REWARD_SETTINGS",
     data: collectSettings(),
   });
 
-  if (!response.success) {
-    showToast(response.error || "자동 수령 설정 저장에 실패했습니다.");
+  if (requestId !== saveRequestId) {
+    return response;
+  }
+
+  if (!response || !response.success) {
+    setSaveState("error");
+    showToast(response?.error || "자동 수령 설정 저장에 실패했습니다.");
+    return response;
+  }
+
+  currentRewardSettings = {
+    ...REWARD_DEFAULTS,
+    ...(response.settings || {}),
+  };
+  setSaveState("saved");
+  if (showSuccessToast) {
+    showToast("자동 수령 설정을 저장했습니다.");
+  }
+  return response;
+}
+
+function scheduleAutoSave(delay = 650) {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer);
+  }
+  autoSaveTimer = setTimeout(() => {
+    saveSettings().catch((error) => {
+      setSaveState("error");
+      showToast(error.message || "자동 수령 설정 저장에 실패했습니다.");
+    });
+  }, delay);
+}
+
+async function flushAutoSave() {
+  if (!autoSaveTimer) return { success: true };
+  return await saveSettings();
+}
+
+function handleSettingInput(event) {
+  if (event.target.id === "autoRewardEnabled") {
+    updateRewardVisibility();
+    scheduleAutoSave(0);
     return;
   }
 
-  renderSettings(response.settings);
-  showToast("자동 수령 설정을 저장했습니다.");
+  scheduleAutoSave(event.type === "change" ? 0 : 650);
 }
 
 async function loadLogs() {
@@ -155,6 +258,16 @@ async function loadLogs() {
 }
 
 async function runNow() {
+  let saved;
+  try {
+    saved = await flushAutoSave();
+  } catch (error) {
+    setSaveState("error");
+    showToast(error.message || "자동 수령 설정 저장에 실패했습니다.");
+    return;
+  }
+  if (saved && saved.success === false) return;
+
   const button = document.getElementById("runNowBtn");
   button.disabled = true;
   button.textContent = "실행 중...";
@@ -193,8 +306,15 @@ document.getElementById("backBtn").addEventListener("click", () => {
 document.getElementById("globalSettingsBtn").addEventListener("click", () => {
   window.location.href = "settings.html";
 });
-document.getElementById("autoRewardEnabled").addEventListener("change", updateRewardVisibility);
-document.getElementById("saveBtn").addEventListener("click", saveSettings);
+SETTING_CONTROL_IDS.forEach((id) => {
+  const element = document.getElementById(id);
+  if (!element) return;
+  const eventName = element.type === "checkbox" ? "change" : "input";
+  element.addEventListener(eventName, handleSettingInput);
+  if (eventName !== "change") {
+    element.addEventListener("change", handleSettingInput);
+  }
+});
 document.getElementById("runNowBtn").addEventListener("click", runNow);
 document.getElementById("refreshLogsBtn").addEventListener("click", loadLogs);
 document.getElementById("clearLogsBtn").addEventListener("click", clearLogs);
